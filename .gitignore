@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Models (too large for git; lived at ~/models or tracked via LFS)
+*.pt
+*.safetensors
+*.gguf
+*.bin
+
+# PDFer runtime data
+.pdfer/
+~/.pdfer/
+
+# PDF test fixtures that aren't the canonical reference
+pdf-tests/
+pdfer-markdown/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Secrets / local config
+.env
+.env.local
+.env.*.local
+
+# Logs / scratch
+*.log
+*.tmp
+scratch/
