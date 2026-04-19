@@ -193,6 +193,16 @@ def _should_prefer_description(
     if pdf_type == "born-digital-corrupt" and text_span_coverage < 0.5:
         return True, "corrupt_low_coverage"
 
+    # Line-count guard: when description has strictly more non-empty lines than
+    # pdfplumber's clip, pdfplumber likely dropped rows (tight bbox clipping
+    # the first/last line of a label stack). Runs before the prose-coverage
+    # shortcut because that shortcut fires on any 5+ word text, even when
+    # pdfplumber is missing a line.
+    desc_lines = sum(1 for ln in description.splitlines() if ln.strip())
+    plumber_lines = sum(1 for ln in pdfplumber_output.splitlines() if ln.strip())
+    if desc_lines > plumber_lines:
+        return True, f"description_has_more_lines ({desc_lines}>{plumber_lines})"
+
     # For text labels, trust pdfplumber when text_spans fully cover the object
     if label in TEXT_LABELS:
         if text_spans_exist and text_span_coverage >= 0.95 and is_prose_shaped(pdfplumber_output):

@@ -116,6 +116,104 @@ FIGURE_CONTAINED_LABELS = {
 # How much of the inner object's area must sit inside the figure to merge.
 CONTAINMENT_THRESHOLD = 0.70
 
+# Minimum overlap (fraction of text-object area) before we bother trimming.
+# Below this, the overlap is likely a rounding-edge artifact, not real bleed.
+TRIM_OVERLAP_THRESHOLD = 0.01
+
+# Don't shrink a figure below this fraction of its original area. When text
+# is deeply embedded in the figure (centered, or far from every edge), the
+# best single-axis shrink destroys most of the image. In that case we skip
+# the trim — better to leave the description slightly polluted than to hand
+# Gemma a sliver of the original figure.
+MIN_FIGURE_RETAINED_AREA = 0.50
+
+
+def _shrink_to_exclude(fig: dict, other: dict) -> dict | None:
+    """Return the minimally-shrunk figure bbox that excludes `other`.
+
+    Tries four axis-aligned shrinks (clip right / left / bottom / top) and
+    picks the one that preserves the most figure area while fully excluding
+    `other`. Returns None if every shrink destroys more than
+    (1 - MIN_FIGURE_RETAINED_AREA) of the figure — meaning `other` is deeply
+    embedded and trimming would hand Gemma only a sliver of the original image.
+    """
+    orig_area = _bbox_area(fig)
+    candidates = []
+
+    # Clip right edge to other's left edge
+    if other["bbox_x1"] > fig["bbox_x1"]:
+        candidates.append({**fig, "bbox_x2": other["bbox_x1"]})
+    # Clip left edge to other's right edge
+    if other["bbox_x2"] < fig["bbox_x2"]:
+        candidates.append({**fig, "bbox_x1": other["bbox_x2"]})
+    # Clip bottom edge (larger y in pixel space) to other's top edge
+    if other["bbox_y1"] > fig["bbox_y1"]:
+        candidates.append({**fig, "bbox_y2": other["bbox_y1"]})
+    # Clip top edge to other's bottom edge
+    if other["bbox_y2"] < fig["bbox_y2"]:
+        candidates.append({**fig, "bbox_y1": other["bbox_y2"]})
+
+    valid = []
+    for c in candidates:
+        if c["bbox_x2"] <= c["bbox_x1"] or c["bbox_y2"] <= c["bbox_y1"]:
+            continue
+        if _bbox_overlap_area(c, other) > 0:
+            continue
+        valid.append(c)
+
+    if not valid:
+        return None
+
+    best = max(valid, key=_bbox_area)
+    if _bbox_area(best) / orig_area < MIN_FIGURE_RETAINED_AREA:
+        return None
+    return best
+
+
+def trim_figure_bboxes(objects: list[dict]) -> list[dict]:
+    """Shrink figure bboxes so they don't overlap surviving non-figure objects.
+
+    Runs after `suppress_figure_contained`. Any text object that was not
+    absorbed (< CONTAINMENT_THRESHOLD contained) but still partially overlaps
+    a figure causes that figure to be trimmed along one axis to exclude it.
+
+    Why: during Stage 1.5 Gemma describes the figure's pixel crop. If text
+    labels bleed into the figure bbox (e.g. product codes on a wood-sample
+    panel), Gemma transcribes a truncated, pixel-clipped version of the
+    labels into the figure's description. That poisons the training corpus
+    (future few-shot examples) and duplicates content in the assembled
+    markdown. Trimming the bbox at detect-stage gives Gemma a clean image
+    crop to describe — the text labels remain as their own objects, which
+    pdfplumber/Gemma will extract correctly.
+
+    Mutates objects in place (bbox coords) and returns the same list.
+    """
+    for i, obj in enumerate(objects):
+        if obj["label"] != "figure":
+            continue
+        fig = obj
+        for j, other in enumerate(objects):
+            if i == j or other["label"] == "figure":
+                continue
+            overlap = _bbox_overlap_area(fig, other)
+            if overlap == 0:
+                continue
+            if overlap / _bbox_area(other) < TRIM_OVERLAP_THRESHOLD:
+                continue
+            shrunk = _shrink_to_exclude(fig, other)
+            if shrunk is None:
+                logger.info(
+                    "figure trim skipped: %s enveloped by figure or shrink "
+                    "would destroy figure", other["label"],
+                )
+                continue
+            fig["bbox_x1"] = shrunk["bbox_x1"]
+            fig["bbox_y1"] = shrunk["bbox_y1"]
+            fig["bbox_x2"] = shrunk["bbox_x2"]
+            fig["bbox_y2"] = shrunk["bbox_y2"]
+
+    return objects
+
 
 def suppress_figure_contained(objects: list[dict]) -> list[dict]:
     """Drop text-ish objects that are mostly inside a figure.
@@ -395,6 +493,11 @@ async def detect_document(db, doc_id: str, broadcast_fn=None) -> int:
                 "Page %d: absorbed %d objects into parent figure(s)",
                 page_number, absorbed,
             )
+
+        # Trim figure bboxes to exclude any surviving text objects that bleed
+        # in. Without this, Gemma sees text bleed as part of the figure and
+        # transcribes it (truncated) into the figure description.
+        raw_objects = trim_figure_bboxes(raw_objects)
 
         # Get text_spans for this page (for post-processing)
         span_rows = await db.execute_fetchall(
