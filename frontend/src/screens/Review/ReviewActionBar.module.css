@@ -1,0 +1,46 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--ink-3);
+  margin-right: 14px;
+  text-transform: uppercase;
+}
+.selLabel strong {
+  color: var(--ink-1);
+  font-weight: 500;
+}
+
+.summary {
+  display: flex;
+  gap: 22px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  align-items: center;
+}
+.summary b {
+  color: var(--ink-1);
+  font-weight: 500;
+}
+
+.right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}

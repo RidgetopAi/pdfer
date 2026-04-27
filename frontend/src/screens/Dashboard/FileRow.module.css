@@ -1,0 +1,165 @@
+.row {
+  display: grid;
+  grid-template-columns: 1fr 140px 560px;
+  gap: 48px;
+  align-items: center;
+}
+
+.fileSlot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.fileSlot .fileButton {
+  flex: 1;
+  min-width: 0;
+}
+
+.runDetect {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(207, 230, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(207, 230, 255, 0.18);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.runDetect:hover:not(:disabled) {
+  color: var(--ink-1);
+  background: rgba(207, 230, 255, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(207, 230, 255, 0.30),
+    0 0 18px rgba(207, 230, 255, 0.10);
+}
+.runDetect:disabled {
+  opacity: 0.6;
+  cursor: progress;
+  background: linear-gradient(
+    90deg,
+    rgba(207, 230, 255, 0.04),
+    rgba(207, 230, 255, 0.10),
+    rgba(207, 230, 255, 0.04)
+  );
+  background-size: 200% 100%;
+  animation: detect-shimmer 1.6s linear infinite;
+}
+@keyframes detect-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.exportLink {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.exportLink:hover {
+  color: var(--ink-1);
+  background: rgba(207, 230, 255, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(207, 230, 255, 0.20),
+    0 0 14px rgba(207, 230, 255, 0.08);
+}
+
+.fileButton {
+  position: relative;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--bg-elev-1), #262321);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--ink-1);
+  cursor: pointer;
+  border: 0;
+  font-family: inherit;
+  text-align: center;
+  padding: 0 16px;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 1px 0 rgba(0, 0, 0, 0.35),
+    0 4px 14px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileButton::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.02));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+.fileButton:hover {
+  background: linear-gradient(180deg, var(--bg-elev-2), #2b2826);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(207, 230, 255, 0.06);
+}
+
+.fileButton.active {
+  background: linear-gradient(180deg, #3a3632, #2e2a27);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(207, 230, 255, 0.25),
+    0 0 24px rgba(207, 230, 255, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.pagePill {
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #2a2725, #211e1c);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: 0 16px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink-2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.matrix {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}

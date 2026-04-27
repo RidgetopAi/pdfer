@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PDFer — Dashboard Mock</title>
+<style>
+  /* ------------------------------------------------------------------
+     Palette — warm dark grey base, monochrome with electric accent.
+     Accent is a cool white-blue; it reads as "backlit" against warm bg.
+  ------------------------------------------------------------------ */
+  :root {
+    --bg:          #252220;        /* warm dark grey */
+    --bg-elev-1:   #2c2927;        /* cards / rows */
+    --bg-elev-2:   #35312e;        /* hovered / active surface */
+    --ink-1:       #f2efe9;        /* primary text, slightly warm white */
+    --ink-2:       #b8b2a8;        /* secondary text */
+    --ink-3:       #6f6a63;        /* tertiary / labels */
+    --ink-4:       #48433e;        /* faint outlines / separators */
+    --accent:      #cfe6ff;        /* electric backlit white-blue */
+    --accent-soft: rgba(207, 230, 255, 0.18);
+    --accent-glow: rgba(207, 230, 255, 0.55);
+
+    --grid-dim-0:  #2a2725;        /* matrix cell — untouched */
+    --grid-dim-1:  #3a3632;        /* early progress */
+    --grid-dim-2:  #555049;        /* mid progress */
+    --grid-dim-3:  #807a71;        /* late progress */
+    --grid-dim-4:  #d4cec4;        /* complete */
+
+    --font-sans:   'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono:   'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink-1); }
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    letter-spacing: 0.01em;
+    min-height: 100vh;
+    /* subtle ambient gradient so background has life, not flat */
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(255,235,210,0.04), transparent 60%),
+      radial-gradient(ellipse at 90% 100%, rgba(207,230,255,0.03), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    overflow-x: hidden;
+  }
+
+  /* ------------------------------------------------------------------
+     Layout
+  ------------------------------------------------------------------ */
+  .app {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 48px 64px 80px;
+  }
+
+  /* Wordmark — floating, not boxed */
+  .brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--ink-1);
+    letter-spacing: 0.08em;
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, #1f1c1a, #181614);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.04),
+      0 1px 0 rgba(0,0,0,0.4),
+      0 8px 24px rgba(0,0,0,0.35);
+    margin-bottom: 72px;
+  }
+  .brand .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow), 0 0 2px var(--accent);
+    animation: pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.9; }
+    50%      { opacity: 0.4; }
+  }
+
+  /* Header labels row above the three panels */
+  .headers {
+    display: grid;
+    grid-template-columns: 1fr 140px 560px;
+    gap: 48px;
+    padding: 0 8px 18px;
+    align-items: end;
+  }
+  .headers h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--ink-1);
+    letter-spacing: 0.02em;
+  }
+  .stage-labels {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+  .stage-labels span {
+    font-size: 13px;
+    color: var(--ink-2);
+    text-align: center;
+    letter-spacing: 0.06em;
+    text-transform: none;
+  }
+
+  /* Main grid: files | pages | matrix */
+  .board {
+    display: grid;
+    grid-template-columns: 1fr 140px 560px;
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* File list column */
+  .files { display: flex; flex-direction: column; gap: 12px; }
+  .file-row {
+    position: relative;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, var(--bg-elev-1), #262321);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--ink-1);
+    cursor: pointer;
+    transition: transform 160ms ease, background 160ms ease, box-shadow 200ms ease;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.03),
+      0 1px 0 rgba(0,0,0,0.35),
+      0 4px 14px rgba(0,0,0,0.25);
+  }
+  .file-row::before {
+    /* soft inner rim, replaces hard border */
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0) 50%, rgba(255,255,255,0.02));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    pointer-events: none;
+  }
+  .file-row:hover {
+    background: linear-gradient(180deg, var(--bg-elev-2), #2b2826);
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      0 2px 0 rgba(0,0,0,0.4),
+      0 10px 28px rgba(0,0,0,0.45),
+      0 0 0 1px rgba(207,230,255,0.06);
+  }
+  .file-row.active {
+    background: linear-gradient(180deg, #3a3632, #2e2a27);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 0 0 1px rgba(207,230,255,0.25),
+      0 0 24px rgba(207,230,255,0.12),
+      0 10px 28px rgba(0,0,0,0.5);
+  }
+
+  /* Pages column */
+  .pages { display: flex; flex-direction: column; gap: 12px; }
+  .page-pill {
+    height: 48px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, #2a2725, #211e1c);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: 0 16px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--ink-2);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.02),
+      0 1px 0 rgba(0,0,0,0.35);
+  }
+  .page-pill .n   { color: var(--ink-1); text-align: left; font-size: 15px; }
+  .page-pill .u   { color: var(--ink-3); text-align: right; font-size: 12px; letter-spacing: 0.1em; }
+
+  /* Stage progress matrix */
+  .matrix {
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .matrix-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+  .cell {
+    position: relative;
+    height: 48px;
+    border-radius: var(--radius-md);
+    background: var(--grid-dim-0);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.02),
+      0 1px 0 rgba(0,0,0,0.35);
+    transition: background 200ms ease, box-shadow 220ms ease, transform 160ms ease;
+  }
+  .cell[data-level="0"] { background: var(--grid-dim-0); }
+  .cell[data-level="1"] {
+    background: linear-gradient(180deg, var(--grid-dim-1), #322e2b);
+  }
+  .cell[data-level="2"] {
+    background: linear-gradient(180deg, var(--grid-dim-2), #45413b);
+  }
+  .cell[data-level="3"] {
+    background: linear-gradient(180deg, var(--grid-dim-3), #6a655d);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 1px 0 rgba(0,0,0,0.35);
+  }
+  .cell[data-level="4"] {
+    background: linear-gradient(180deg, var(--grid-dim-4), #b4ada2);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.25),
+      0 1px 0 rgba(0,0,0,0.35),
+      0 0 16px rgba(212,206,196,0.18);
+  }
+  /* Currently-processing cell — subtle breathing electric glow */
+  .cell.current {
+    background: linear-gradient(180deg, #4a463f, #322e2a);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 0 0 1px rgba(207,230,255,0.35),
+      0 0 18px rgba(207,230,255,0.22);
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% {
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.08),
+        0 0 0 1px rgba(207,230,255,0.25),
+        0 0 14px rgba(207,230,255,0.15);
+    }
+    50% {
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        0 0 0 1px rgba(207,230,255,0.5),
+        0 0 26px rgba(207,230,255,0.32);
+    }
+  }
+  .cell:hover { transform: translateY(-1px); }
+
+  /* Right-side caption about the lightening pattern */
+  .matrix-wrap { position: relative; }
+  .legend {
+    position: absolute;
+    top: 8px;
+    left: calc(100% + 24px);
+    width: 180px;
+    color: var(--ink-3);
+    font-size: 12px;
+    line-height: 1.55;
+    letter-spacing: 0.02em;
+  }
+  .legend .swatches {
+    display: flex; gap: 6px; margin-top: 14px;
+  }
+  .legend .sw {
+    width: 22px; height: 10px; border-radius: 3px;
+  }
+
+  /* Footer hint row — settings link + empty state nod */
+  .footer {
+    margin-top: 64px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--ink-3); font-size: 12px;
+    padding: 0 8px;
+  }
+  .footer a {
+    color: var(--ink-2); text-decoration: none;
+    padding: 8px 14px; border-radius: 20px;
+    background: rgba(255,255,255,0.02);
+    transition: background 160ms ease, color 160ms ease, box-shadow 200ms ease;
+  }
+  .footer a:hover {
+    color: var(--ink-1);
+    background: rgba(207,230,255,0.06);
+    box-shadow: 0 0 0 1px rgba(207,230,255,0.12), 0 0 18px rgba(207,230,255,0.08);
+  }
+  .watch-dir {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .watch-dir .label { color: var(--ink-3); margin-right: 8px; letter-spacing: 0.08em; }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <div class="brand">
+      <span class="dot"></span>
+      PDFer
+    </div>
+
+    <div class="headers">
+      <h2>File Name</h2>
+      <h2>Pages</h2>
+      <div class="stage-labels">
+        <span>Ingest</span>
+        <span>Detect</span>
+        <span>Review</span>
+        <span>Assemble</span>
+        <span>Export</span>
+      </div>
+    </div>
+
+    <div class="board">
+
+      <!-- Files -->
+      <div class="files" id="files"></div>
+
+      <!-- Pages -->
+      <div class="pages" id="pages"></div>
+
+      <!-- Matrix -->
+      <div class="matrix-wrap">
+        <div class="matrix" id="matrix"></div>
+        <div class="legend">
+          Fill darkens&nbsp;→&nbsp;brightens as a file advances through stages.
+          <div class="swatches">
+            <div class="sw" style="background: var(--grid-dim-0)"></div>
+            <div class="sw" style="background: var(--grid-dim-1)"></div>
+            <div class="sw" style="background: var(--grid-dim-2)"></div>
+            <div class="sw" style="background: var(--grid-dim-3)"></div>
+            <div class="sw" style="background: var(--grid-dim-4)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="watch-dir">
+        <span class="label">WATCH</span>~/Documents/invoices-q2
+      </div>
+      <a href="#">Settings →</a>
+    </div>
+
+  </div>
+
+<script>
+  /* Mock data — ten files, each at a different point in the pipeline.
+     `progress` is how far through the 5 stages (0..5).
+     `current`  is which stage is actively processing (or null).        */
+  const files = [
+    { name: 'acme-invoice-0412.pdf',      pages: 6,  progress: 5, current: null },
+    { name: 'tax-return-2025-draft.pdf',  pages: 9,  progress: 4, current: 4    },
+    { name: 'contract-northwind.pdf',     pages: 5,  progress: 3, current: 3    },
+    { name: 'receipts-march-bundle.pdf',  pages: 12, progress: 2, current: 2    },
+    { name: 'quarterly-report-q1.pdf',    pages: 18, progress: 2, current: null },
+    { name: 'vendor-W9-steelcase.pdf',    pages: 2,  progress: 1, current: 1    },
+    { name: 'lease-agreement-final.pdf',  pages: 14, progress: 1, current: null },
+    { name: 'medical-intake-packet.pdf',  pages: 7,  progress: 0, current: null },
+    { name: 'shipping-manifest-04.pdf',   pages: 4,  progress: 0, current: null },
+    { name: 'hr-onboarding-docs.pdf',     pages: 22, progress: 0, current: null },
+  ];
+
+  const filesEl  = document.getElementById('files');
+  const pagesEl  = document.getElementById('pages');
+  const matrixEl = document.getElementById('matrix');
+
+  files.forEach((f, i) => {
+    // file row
+    const row = document.createElement('div');
+    row.className = 'file-row' + (i === 1 ? ' active' : '');
+    row.textContent = f.name;
+    row.addEventListener('click', () => {
+      document.querySelectorAll('.file-row.active').forEach(n => n.classList.remove('active'));
+      row.classList.add('active');
+    });
+    filesEl.appendChild(row);
+
+    // page pill
+    const pill = document.createElement('div');
+    pill.className = 'page-pill';
+    pill.innerHTML = `<span class="n">${f.pages}</span><span class="u">pgs</span>`;
+    pagesEl.appendChild(pill);
+
+    // matrix row
+    const mrow = document.createElement('div');
+    mrow.className = 'matrix-row';
+    for (let s = 0; s < 5; s++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      // level 0..4 based on how far past this stage the file is
+      let level = 0;
+      if (s < f.progress) level = Math.min(4, 1 + s); // lighten as we go right
+      if (s < f.progress) level = Math.min(4, Math.max(1, Math.round((s + 1) / f.progress * 4)));
+      if (s < f.progress) level = 4 - (f.progress - s - 1); // brighter for later-completed stages
+      level = Math.max(0, Math.min(4, level));
+      cell.dataset.level = level;
+      if (f.current === s) cell.classList.add('current');
+      mrow.appendChild(cell);
+    }
+    matrixEl.appendChild(mrow);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+/* =====================================================================
+   PDFer Design Tokens
+   Locked direction: warm dark grey base, monochrome chrome, saturated
+   region color system, electric backlit accent. All tokens live here.
+===================================================================== */
+:root {
+  /* --- Surface palette ----------------------------------------------- */
+  --bg:          #252220;        /* warm dark grey base */
+  --bg-elev-1:   #2c2927;        /* cards, rows */
+  --bg-elev-2:   #35312e;        /* hovered / active */
+  --bg-deep:     #1f1c1a;        /* recessed, wordmark */
+
+  /* --- Ink (text) palette -------------------------------------------- */
+  --ink-1:       #f2efe9;        /* primary */
+  --ink-2:       #b8b2a8;        /* secondary */
+  --ink-3:       #6f6a63;        /* tertiary, labels */
+  --ink-4:       #48433e;        /* faint separators */
+
+  /* --- Accent (electric backlit) ------------------------------------- */
+  --accent:      #cfe6ff;
+  --accent-soft: rgba(207, 230, 255, 0.18);
+  --accent-glow: rgba(207, 230, 255, 0.55);
+
+  /* --- Progress matrix levels (dark → bright) ------------------------ */
+  --grid-dim-0:  #2a2725;
+  --grid-dim-1:  #3a3632;
+  --grid-dim-2:  #555049;
+  --grid-dim-3:  #807a71;
+  --grid-dim-4:  #d4cec4;
+
+  /* --- Region type tints (saturated, spread on wheel) ---------------- */
+  --type-text:       rgb(110, 180, 255);   /* electric blue */
+  --type-table:      rgb(255, 170, 60);    /* amber orange */
+  --type-form:       rgb(255, 100, 140);   /* hot pink */
+  --type-signature:  rgb(70, 230, 200);    /* teal-mint */
+  --type-image:      rgb(190, 130, 255);   /* violet */
+
+  /* --- Semantic status colors --------------------------------------- */
+  --status-approve:  rgb(150, 230, 180);
+  --status-reject:   rgb(255, 150, 140);
+
+  /* --- Page surface (PDF paper) ------------------------------------- */
+  --page-bg:     #f6f3ec;
+  --page-ink:    #1c1916;
+
+  /* --- Typography --------------------------------------------------- */
+  --font-sans:   'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:   'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  --font-serif:  'Georgia', 'Times New Roman', serif;
+
+  /* --- Radii -------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* --- Motion timing ------------------------------------------------- */
+  --ease-out:   cubic-bezier(.2, .8, .2, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  --dur-fast:   160ms;
+  --dur-base:   240ms;
+  --dur-slow:   400ms;
+}
+
+/* ---------------------------------------------------------------------
+   Global baseline — neutral reset for the v2 shell.
+   Scoped to body so we don't fight the existing v1 app's inline styles.
+--------------------------------------------------------------------- */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+* { box-sizing: border-box; }

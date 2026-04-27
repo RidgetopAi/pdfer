@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import PAGES_DIR, ASSETS_DIR, ensure_dirs
 from app.database import get_db
 from app.routers.documents import router as documents_router
+from app.routers.training import router as training_router
 
 
 @asynccontextmanager
@@ -28,6 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(documents_router)
+app.include_router(training_router)
 
 
 @app.get("/health")

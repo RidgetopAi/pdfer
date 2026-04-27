@@ -1,0 +1,194 @@
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr 340px;
+  grid-template-rows: 64px 1fr 88px;
+  grid-template-areas:
+    "rail  top     insp"
+    "rail  stage   insp"
+    "rail  bottom  insp";
+  height: 100vh;
+  background:
+    radial-gradient(ellipse at 15% 10%, rgba(255, 235, 210, 0.05), transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgba(207, 230, 255, 0.04), transparent 55%),
+    var(--bg);
+  overflow: hidden;
+}
+
+/* Diff View — drop the left rail, let the stage span from the viewport
+ * edge to the inspector. Keeps top/bottom/inspector identical so all
+ * actions (approve, reject, Run Gemma, Esc) behave the same. */
+.app[data-view="diff"] {
+  grid-template-columns: 1fr 340px;
+  grid-template-areas:
+    "top     insp"
+    "stage   insp"
+    "bottom  insp";
+}
+
+.top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+}
+
+.brand {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow), 0 0 2px var(--accent);
+  animation: pdfer-pulse 3s ease-in-out infinite;
+}
+
+.fileTitle {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-1);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.fileTitle .pg {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+.topActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btnGlyph {
+  font-size: 10px;
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+.rail {
+  grid-area: rail;
+  padding: 28px 0 28px 40px;
+}
+
+.stage {
+  grid-area: stage;
+  min-width: 0;
+  min-height: 0;
+}
+
+.bottom {
+  grid-area: bottom;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px 24px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.bottom .placeholder {
+  opacity: 0.5;
+}
+
+.insp {
+  grid-area: insp;
+  padding: 28px 32px 28px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Upper stack — Inspector / AI Read / Auto-Confirm — scrolls
+ * independently so the pinned Original thumbnail below stays in place. */
+.inspScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-right: 4px;
+  /* Soft fade where the scroll area disappears behind the pinned thumb. */
+  mask-image: linear-gradient(
+    180deg,
+    black 0,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    black 0,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+.inspScroll::-webkit-scrollbar {
+  width: 6px;
+}
+.inspScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.inspScroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+.inspScroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.inspPinned {
+  flex-shrink: 0;
+  padding-top: 16px;
+}
+
+.loading {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.errorState {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+  padding: 0 40px;
+}
+.errorState h3 {
+  color: rgb(255, 180, 170);
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+.errorState p {
+  color: var(--ink-2);
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.6;
+  font-size: 13px;
+}

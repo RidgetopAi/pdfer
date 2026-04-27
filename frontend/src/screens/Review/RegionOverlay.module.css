@@ -1,0 +1,107 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Tag-only anchor for non-selected regions: positioned like a region
+ * but invisible and click-through — Konva draws the rect underneath. */
+.tagAnchor {
+  position: absolute;
+  pointer-events: none;
+}
+
+.region {
+  position: absolute;
+  border-radius: 4px;
+  /* Click-through: Konva owns drag/resize on the selected region beneath
+     this layer. The visual treatment (shimmer, glow, tag pill) stays — it's
+     all decorative. The tag pill below sits outside the rect (top: -24px)
+     and re-enables pointer-events so it remains hoverable. */
+  pointer-events: none;
+  background: color-mix(in srgb, var(--tint) 20%, transparent);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 0 0 2px var(--accent),
+    0 0 0 4px rgba(207, 230, 255, 0.25),
+    0 0 40px rgba(207, 230, 255, 0.5),
+    0 0 80px color-mix(in srgb, var(--tint) 35%, transparent);
+  animation: pdfer-region-breathe 2.6s ease-in-out infinite;
+  overflow: hidden;
+}
+
+.region::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(207, 230, 255, 0.18) 48%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(207, 230, 255, 0.18) 52%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  animation: pdfer-scan 2.8s linear infinite;
+  mix-blend-mode: screen;
+}
+
+.tag {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--tint);
+  padding: 4px 10px;
+  background: rgba(20, 18, 16, 0.92);
+  border-radius: 10px;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--tint) 55%, transparent),
+    0 0 14px color-mix(in srgb, var(--tint) 30%, transparent);
+  text-transform: uppercase;
+}
+
+/* Rejected regions get a desaturated, de-emphasized tag to match the
+ * hatched box style drawn by PageStage. */
+.tagRejected {
+  opacity: 0.55;
+  filter: saturate(0.3);
+}
+
+.tag .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tint);
+  margin-right: 7px;
+  vertical-align: middle;
+  box-shadow: 0 0 8px var(--tint), 0 0 2px var(--tint);
+}
+
+/* Approve / reject flash — transient glow on a region that just received an edit. */
+.flash {
+  position: absolute;
+  border-radius: 4px;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--tint) 30%, transparent);
+  box-shadow:
+    0 0 0 2px var(--tint),
+    0 0 40px var(--tint),
+    0 0 80px color-mix(in srgb, var(--tint) 50%, transparent);
+  animation: pdfer-flash 600ms var(--ease-out) forwards;
+}
+
+@keyframes pdfer-flash {
+  0%   { transform: scale(1);    opacity: 0.0; }
+  20%  { transform: scale(1.04); opacity: 1.0; }
+  100% { transform: scale(1);    opacity: 0.0; }
+}

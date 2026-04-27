@@ -10,7 +10,11 @@ THUMB_WIDTH = 200
 
 # Model paths
 YOLO_WEIGHTS = Path.home() / "models" / "yolo-doclaynet" / "yolov8m-doclaynet.pt"
-YOLO_CONF_THRESHOLD = 0.25
+# Raised from 0.25 → 0.40 on 2026-04-25 because low-conf predictions (<0.40)
+# had garbage edge localization — bboxes covered only a fragment of the actual
+# text block, producing the visible "clipped text" issue. Reviewer can still
+# draw missing boxes for any legitimate <0.40 detections we drop.
+YOLO_CONF_THRESHOLD = 0.40
 # Lowered from 0.45 → 0.30 on 2026-04-18 because YOLO was double-classifying
 # logos (two overlapping figure boxes). Tighter NMS at the cost of occasionally
 # dropping a legitimate same-class neighbor — acceptable because the reviewer

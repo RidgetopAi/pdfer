@@ -1,0 +1,68 @@
+.empty {
+  padding: 28px 8px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-align: center;
+  line-height: 1.7;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px 14px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  padding-top: 1px;
+}
+.val {
+  color: var(--ink-1);
+  word-break: break-word;
+}
+.tintDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.confidence {
+  margin-top: 6px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+.confFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), rgba(207, 230, 255, 0.3));
+  box-shadow: 0 0 8px rgba(207, 230, 255, 0.4);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.monoVal {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.sourceVal {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-2);
+}

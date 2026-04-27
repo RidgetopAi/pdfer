@@ -111,6 +111,27 @@ class ModelManager:
     def unload_all(self):
         self._unload_current()
 
+    def status(self) -> dict:
+        """Snapshot for the UI status indicator.
+
+        Reports per-model load state ("loaded" | "unloaded") and which one
+        currently owns the GPU. VRAM is best-effort — only present when CUDA
+        is available and torch is already imported.
+        """
+        vram_mib: float | None = None
+        try:
+            import torch
+            if torch.cuda.is_available():
+                vram_mib = torch.cuda.memory_allocated() / 1024 / 1024
+        except Exception:
+            pass
+        return {
+            "active": self._active,  # "yolo" | "gemma" | None
+            "yolo": "loaded" if self._yolo_model is not None else "unloaded",
+            "gemma": "loaded" if self._gemma is not None else "unloaded",
+            "vram_mib": vram_mib,
+        }
+
 
 # Singleton
 model_manager = ModelManager()

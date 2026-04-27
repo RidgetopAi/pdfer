@@ -1,0 +1,76 @@
+.thumb {
+  display: block;
+  width: 100%;
+  padding: 14px 16px 16px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 1px 0 rgba(0, 0, 0, 0.35),
+    0 12px 32px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  text-align: left;
+  transition: box-shadow 220ms ease, transform 160ms ease, background 220ms ease;
+}
+
+.thumb:hover {
+  background: linear-gradient(180deg, rgba(207, 230, 255, 0.06), rgba(207, 230, 255, 0.015));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(207, 230, 255, 0.25),
+    0 12px 32px rgba(0, 0, 0, 0.3),
+    0 0 24px rgba(207, 230, 255, 0.12);
+}
+
+.thumb:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 2px rgba(207, 230, 255, 0.5),
+    0 0 24px rgba(207, 230, 255, 0.2);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ttl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--ink-2);
+}
+
+.hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--ink-3);
+  transition: color 160ms ease;
+}
+
+.thumb:hover .hint {
+  color: var(--accent);
+}
+
+.imgWrap {
+  width: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--page-bg);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.imgWrap img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}

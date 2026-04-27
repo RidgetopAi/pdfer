@@ -1,0 +1,34 @@
+.stage {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+
+.node {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink-4);
+  flex-shrink: 0;
+  transition: all var(--dur-base) var(--ease-out);
+}
+
+.stage.past .node {
+  background: var(--ink-2);
+  box-shadow: 0 0 0 3px rgba(184, 178, 168, 0.08);
+}
+
+.stage.current .node {
+  background: var(--accent);
+  animation: pdfer-node-breathe 2.4s ease-in-out infinite;
+}
+
+.label {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.stage.past .label { color: var(--ink-2); }
+.stage.current .label { color: var(--ink-1); font-weight: 500; }

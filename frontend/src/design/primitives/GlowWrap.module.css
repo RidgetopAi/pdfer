@@ -1,0 +1,34 @@
+.wrap {
+  position: relative;
+  display: inline-block;
+  border-radius: inherit;
+}
+
+/* Backlit halo — soft glow bleeding outward from wrapped element */
+.wrap.backlit {
+  filter: drop-shadow(0 0 18px rgba(207, 230, 255, 0.35))
+          drop-shadow(0 0 4px rgba(207, 230, 255, 0.5));
+}
+
+.wrap.breathing {
+  animation: pdfer-breathe 2.4s ease-in-out infinite;
+}
+
+/* Scan shimmer overlay — adds a diagonal light-sweep on top of child */
+.shimmer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(207, 230, 255, 0.18) 48%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(207, 230, 255, 0.18) 52%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  animation: pdfer-scan 2.8s linear infinite;
+  mix-blend-mode: screen;
+}

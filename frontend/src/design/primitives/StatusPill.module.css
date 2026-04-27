@@ -1,0 +1,55 @@
+.pill {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  padding: 3px 9px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-3);
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.pill.ready {
+  background: rgba(207, 230, 255, 0.1);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(207, 230, 255, 0.2), 0 0 12px rgba(207, 230, 255, 0.15);
+}
+
+.pill.pending {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-3);
+}
+
+.pill.running {
+  background: rgba(255, 220, 180, 0.08);
+  color: rgb(255, 200, 140);
+  box-shadow: 0 0 0 1px rgba(255, 200, 140, 0.25);
+}
+
+.pill.done {
+  background: rgba(150, 230, 180, 0.1);
+  color: var(--status-approve);
+  box-shadow: 0 0 0 1px rgba(150, 230, 180, 0.25);
+}
+
+.pill.error {
+  background: rgba(255, 150, 140, 0.08);
+  color: var(--status-reject);
+  box-shadow: 0 0 0 1px rgba(255, 150, 140, 0.25);
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.dot.pulsing {
+  animation: pdfer-pulse 2s ease-in-out infinite;
+}

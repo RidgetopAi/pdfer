@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 export type InteractionMode = "select" | "draw";
+export type ViewMode = "review" | "diff";
 
 export interface Toast {
   message: string;
@@ -21,6 +22,11 @@ interface ReviewState {
   // Interaction mode
   mode: InteractionMode;
   setMode: (mode: InteractionMode) => void;
+
+  // View mode — "review" is the default annotated view; "diff" splits
+  // the center stage into clean-original | annotated.
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
 
   // Toast (undo feedback)
   toast: Toast | null;
@@ -55,6 +61,9 @@ export const useReviewStore = create<ReviewState>((set) => ({
 
   mode: "select",
   setMode: (mode) => set({ mode }),
+
+  viewMode: "review",
+  setViewMode: (viewMode) => set({ viewMode }),
 
   toast: null,
   showToast: (message, action) =>

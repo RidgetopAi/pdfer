@@ -1,0 +1,42 @@
+.wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 235, 210, 0.04), transparent 60%),
+    radial-gradient(ellipse at 90% 100%, rgba(207, 230, 255, 0.03), transparent 55%),
+    var(--bg);
+}
+
+.card {
+  text-align: center;
+  padding: 48px 56px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: 48px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-shadow: 0 0 24px var(--accent-glow);
+  margin: 0 0 12px;
+}
+
+.msg {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 0 0 28px;
+  letter-spacing: 0.04em;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}

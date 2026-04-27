@@ -3,6 +3,7 @@
 YOLO inference → label mapping → DBSCAN column detection → reading order → heading hierarchy.
 Per architecture Change 4: text_spans feed post-processing, not YOLO.
 """
+import asyncio
 import logging
 import uuid
 from collections import defaultdict
@@ -63,7 +64,7 @@ def detect_page_objects(
         conf=conf_threshold,
         iou=iou_threshold,
         verbose=False,
-        imgsz=640,
+        imgsz=1024,
     )
     r = results[0]
 
@@ -126,6 +127,15 @@ TRIM_OVERLAP_THRESHOLD = 0.01
 # the trim — better to leave the description slightly polluted than to hand
 # Gemma a sliver of the original figure.
 MIN_FIGURE_RETAINED_AREA = 0.50
+
+# Cross-class duplicate suppression. Standard YOLO NMS only suppresses within
+# a class — two predictions for the same physical region but different labels
+# (e.g. paragraph + list at conf 0.50 / 0.46) both survive and render as
+# overlapping boxes that look like clipped detections. When two non-figure
+# objects overlap above this IoU, keep the higher-confidence label and drop
+# the other. Threshold is conservative so legitimate touching neighbors
+# (adjacent list items, stacked paragraphs) aren't merged.
+CROSS_CLASS_DEDUPE_IOU = 0.70
 
 
 def _shrink_to_exclude(fig: dict, other: dict) -> dict | None:
@@ -213,6 +223,53 @@ def trim_figure_bboxes(objects: list[dict]) -> list[dict]:
             fig["bbox_y2"] = shrunk["bbox_y2"]
 
     return objects
+
+
+def _bbox_iou(a: dict, b: dict) -> float:
+    """IoU between two bboxes."""
+    inter = _bbox_overlap_area(a, b)
+    if inter == 0:
+        return 0.0
+    union = _bbox_area(a) + _bbox_area(b) - inter
+    return inter / union if union > 0 else 0.0
+
+
+def suppress_cross_class_duplicates(
+    objects: list[dict],
+    iou_threshold: float = CROSS_CLASS_DEDUPE_IOU,
+) -> list[dict]:
+    """Drop lower-confidence objects that overlap a higher-confidence one of a different class.
+
+    YOLO's built-in NMS is per-class, so the model can emit (paragraph, list)
+    or (paragraph, section_heading) predictions for the same physical block
+    and both survive. Without this pass they render as overlapping boxes that
+    each cover a fragment of the actual region — the user-facing symptom is
+    "clipped text" with extra ghost boxes.
+
+    Figures are exempt: the figure-containment pass already handled their
+    text-bleed cases, and figures legitimately overlap captions/section
+    headings that we want to keep separate.
+    """
+    n = len(objects)
+    keep = [True] * n
+    # Sort indices by confidence descending so the higher-conf object always
+    # wins when two overlap — we drop the later (lower-conf) entry.
+    order = sorted(range(n), key=lambda i: -objects[i].get("confidence", 0.0))
+    for ai_idx, i in enumerate(order):
+        if not keep[i]:
+            continue
+        if objects[i]["label"] == "figure":
+            continue
+        for j in order[ai_idx + 1:]:
+            if not keep[j]:
+                continue
+            if objects[j]["label"] == "figure":
+                continue
+            if objects[i]["label"] == objects[j]["label"]:
+                continue  # same-class is YOLO NMS's job, not ours
+            if _bbox_iou(objects[i], objects[j]) >= iou_threshold:
+                keep[j] = False
+    return [o for i, o in enumerate(objects) if keep[i]]
 
 
 def suppress_figure_contained(objects: list[dict]) -> list[dict]:
@@ -468,8 +525,9 @@ async def detect_document(db, doc_id: str, broadcast_fn=None) -> int:
     for pr in page_rows:
         page_id, page_number, image_path, width_px, height_px, dpi = pr
 
-        # Run YOLO detection
-        raw_objects = detect_page_objects(image_path)
+        # Run YOLO detection off the event loop — inference is synchronous and
+        # would otherwise block all HTTP requests for several seconds per page.
+        raw_objects = await asyncio.to_thread(detect_page_objects, image_path)
 
         if not raw_objects:
             logger.info("Page %d: no objects detected", page_number)
@@ -498,6 +556,17 @@ async def detect_document(db, doc_id: str, broadcast_fn=None) -> int:
         # in. Without this, Gemma sees text bleed as part of the figure and
         # transcribes it (truncated) into the figure description.
         raw_objects = trim_figure_bboxes(raw_objects)
+
+        # Drop low-conf duplicates of a different class covering the same
+        # region — YOLO's per-class NMS doesn't catch these.
+        before_dedupe = len(raw_objects)
+        raw_objects = suppress_cross_class_duplicates(raw_objects)
+        deduped = before_dedupe - len(raw_objects)
+        if deduped:
+            logger.info(
+                "Page %d: suppressed %d cross-class duplicate object(s)",
+                page_number, deduped,
+            )
 
         # Get text_spans for this page (for post-processing)
         span_rows = await db.execute_fetchall(

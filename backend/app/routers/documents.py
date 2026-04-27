@@ -1,10 +1,11 @@
 """Document CRUD, ingest, detection, review edit, extraction, and assembly endpoints."""
 import json
+import logging
 import uuid
 from pathlib import Path
 
 import aiosqlite
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 
 from app.config import UPLOAD_DIR
@@ -41,12 +42,39 @@ from app.services.extract import extract_document
 from app.services.describe import describe_document, describe_single_object
 from app.services.assemble import assemble_document, build_bundle_zip
 from app.services.gemma import save_training_crop
+from app.services.model_manager import model_manager
 from app.ws import manager
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 DEFAULT_PROJECT_ID = "default"
+
+
+async def _run_detect_background(doc_id: str) -> None:
+    """Run YOLO detection on a freshly-ingested doc, with its own DB connection.
+
+    Called from BackgroundTasks after upload returns. Failures are logged and
+    flipped on the document so the dashboard surfaces stage_status='failed'
+    instead of a permanent 'pending' that looks like a hang.
+    """
+    db = await get_db()
+    try:
+        await detect_document(db, doc_id, broadcast_fn=manager.broadcast)
+    except Exception:
+        logger.exception("Auto-detect failed for document %s", doc_id)
+        try:
+            await db.execute(
+                "UPDATE documents SET current_stage=1, stage_status='failed' WHERE id=?",
+                (doc_id,),
+            )
+            await db.commit()
+            await manager.broadcast(doc_id, "stage.failed", {"stage": "detect"})
+        except Exception:
+            logger.exception("Failed to mark detect as failed for %s", doc_id)
+    finally:
+        await db.close()
 
 
 async def ensure_default_project(db: aiosqlite.Connection):
@@ -62,7 +90,7 @@ async def ensure_default_project(db: aiosqlite.Connection):
 
 
 @router.post("/documents", response_model=DocumentResponse)
-async def upload_document(file: UploadFile):
+async def upload_document(file: UploadFile, background_tasks: BackgroundTasks):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files are accepted")
 
@@ -99,12 +127,27 @@ async def upload_document(file: UploadFile):
             (doc_id,),
         )
         r = row[0]
+        # Auto-trigger detection. Runs in the background so the upload response
+        # returns immediately; the dashboard picks up the stage transition via
+        # WebSocket (stage.completed) and its 1.5s adaptive poll.
+        background_tasks.add_task(_run_detect_background, doc_id)
         return DocumentResponse(
             id=r[0], filename=r[1], page_count=r[2],
             current_stage=r[3], stage_status=r[4], created_at=r[5],
         )
     finally:
         await db.close()
+
+
+@router.get("/models/status")
+async def models_status():
+    """Snapshot of GPU model load state for the dashboard indicator.
+
+    Returns {"active", "yolo", "gemma", "vram_mib"}. `active` is which model
+    currently owns the GPU ("yolo" | "gemma" | None); the per-model fields
+    report whether each is currently resident in memory.
+    """
+    return model_manager.status()
 
 
 @router.get("/documents", response_model=DocumentListResponse)

@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PDFer — Review Mock</title>
+<style>
+  /* ------------------------------------------------------------------
+     Shared palette — matches dashboard mock.
+  ------------------------------------------------------------------ */
+  :root {
+    --bg:          #252220;
+    --bg-elev-1:   #2c2927;
+    --bg-elev-2:   #35312e;
+    --ink-1:       #f2efe9;
+    --ink-2:       #b8b2a8;
+    --ink-3:       #6f6a63;
+    --ink-4:       #48433e;
+
+    --accent:      #cfe6ff;        /* electric backlit white-blue */
+    --accent-soft: rgba(207, 230, 255, 0.18);
+    --accent-glow: rgba(207, 230, 255, 0.55);
+
+    /* Region type tints — saturated & spread across the wheel for fast scan-reading.
+       Still reads as "light" because the page is bright; the accent glow stays cool-white. */
+    --type-text:       rgb(110, 180, 255);   /* electric blue — prose */
+    --type-table:      rgb(255, 170, 60);    /* amber orange — tables */
+    --type-form:       rgb(255, 100, 140);   /* hot pink — forms */
+    --type-signature:  rgb(70, 230, 200);    /* teal-mint — signatures */
+    --type-image:      rgb(190, 130, 255);   /* violet — images */
+
+    --page-bg:     #f6f3ec;        /* warm off-white PDF page */
+    --page-ink:    #1c1916;
+
+    --font-sans:   'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono:   'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    --font-serif:  'Georgia', 'Times New Roman', serif;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink-1); }
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    letter-spacing: 0.01em;
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 15% 10%, rgba(255,235,210,0.05), transparent 55%),
+      radial-gradient(ellipse at 85% 90%, rgba(207,230,255,0.04), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    overflow: hidden;
+  }
+  /* faint grain */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; opacity: 0.035;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+    z-index: 100;
+  }
+
+  /* ------------------------------------------------------------------
+     Layout — 3 columns: stage rail | page stage | instrument rail
+  ------------------------------------------------------------------ */
+  .app {
+    display: grid;
+    grid-template-columns: 220px 1fr 340px;
+    grid-template-rows: 64px 1fr 88px;
+    grid-template-areas:
+      "rail  top     insp"
+      "rail  stage   insp"
+      "rail  bottom  insp";
+    height: 100vh;
+    gap: 0;
+  }
+
+  /* --- Top bar --- */
+  .top {
+    grid-area: top;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+  }
+  .brand {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    color: var(--ink-2);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow), 0 0 2px var(--accent);
+    animation: pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:.9} 50%{opacity:.4} }
+  .file-title {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-1);
+    letter-spacing: 0.04em;
+  }
+  .file-title .pg { color: var(--ink-3); margin-left: 14px; }
+  .top-actions { display: flex; gap: 12px; align-items: center; }
+  .btn {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--ink-1);
+    padding: 9px 16px;
+    border: 0;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.03);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: background 160ms ease, box-shadow 220ms ease, color 160ms ease, transform 120ms ease;
+  }
+  .btn:hover {
+    background: rgba(207,230,255,0.08);
+    box-shadow: 0 0 0 1px rgba(207,230,255,0.2), 0 0 22px rgba(207,230,255,0.1);
+  }
+  .btn.primary {
+    background: linear-gradient(180deg, rgba(207,230,255,0.22), rgba(207,230,255,0.08));
+    color: #0f1012;
+    color: var(--ink-1);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.2),
+      0 0 0 1px rgba(207,230,255,0.35),
+      0 0 22px rgba(207,230,255,0.25);
+  }
+  .btn.primary:hover { transform: translateY(-1px); }
+  .btn .glyph { font-size: 10px; margin-right: 6px; color: var(--accent); }
+
+  /* --- Left rail: stage constellation + page thumbs --- */
+  .rail {
+    grid-area: rail;
+    padding: 28px 0 28px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+    overflow: hidden;
+  }
+  .stages {
+    display: flex; flex-direction: column; position: relative; gap: 22px;
+    padding-left: 14px;
+  }
+  .stages::before {
+    content: ''; position: absolute;
+    left: 19px; top: 8px; bottom: 8px; width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent);
+  }
+  .stage {
+    display: flex; align-items: center; gap: 14px;
+    position: relative; cursor: default;
+  }
+  .stage .node {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ink-4);
+    flex-shrink: 0;
+    transition: all 200ms ease;
+  }
+  .stage.past .node {
+    background: var(--ink-2);
+    box-shadow: 0 0 0 3px rgba(184,178,168,0.08);
+  }
+  .stage.current .node {
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(207,230,255,0.12), 0 0 14px var(--accent-glow);
+    animation: node-breathe 2.4s ease-in-out infinite;
+  }
+  @keyframes node-breathe {
+    0%,100% { box-shadow: 0 0 0 4px rgba(207,230,255,0.10), 0 0 10px rgba(207,230,255,0.35); }
+    50%     { box-shadow: 0 0 0 6px rgba(207,230,255,0.18), 0 0 22px rgba(207,230,255,0.6);  }
+  }
+  .stage .label {
+    font-size: 13px; letter-spacing: 0.06em;
+    color: var(--ink-3);
+  }
+  .stage.past .label { color: var(--ink-2); }
+  .stage.current .label { color: var(--ink-1); font-weight: 500; }
+
+  /* Page thumbs */
+  .thumbs-title {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.18em;
+    color: var(--ink-3);
+    padding-left: 14px;
+  }
+  .thumbs {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    padding: 0 14px 0 0;
+    max-height: 260px; overflow: auto;
+  }
+  .thumb {
+    aspect-ratio: 3/4;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #3a3632, #2a2725);
+    position: relative;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(0,0,0,0.3);
+    transition: transform 140ms ease, box-shadow 200ms ease;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding: 4px;
+  }
+  .thumb:hover { transform: translateY(-1px); }
+  .thumb .n {
+    font-family: var(--font-mono); font-size: 9px; color: var(--ink-3);
+  }
+  .thumb.active {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 0 0 1px rgba(207,230,255,0.35),
+      0 0 18px rgba(207,230,255,0.22);
+  }
+  .thumb.active .n { color: var(--ink-1); }
+  .thumb.done::before {
+    content: ''; position: absolute; top: 4px; right: 4px;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+  }
+
+  /* --- Center stage: the PDF page --- */
+  .stage-area {
+    grid-area: stage;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-halo {
+    position: relative;
+    filter: drop-shadow(0 30px 60px rgba(0,0,0,0.55))
+            drop-shadow(0 0 120px rgba(255,230,200,0.06));
+  }
+  .pdf-page {
+    position: relative;
+    width: 620px; height: 800px;
+    background: var(--page-bg);
+    border-radius: 3px;
+    color: var(--page-ink);
+    /* ambient rim light — warm top-left, cool bottom-right */
+    box-shadow:
+      inset 1px 1px 0 rgba(255,240,220,0.4),
+      inset -1px -1px 0 rgba(180,195,220,0.2),
+      0 40px 80px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(0,0,0,0.3);
+    overflow: hidden;
+    font-family: var(--font-serif);
+  }
+  /* page paper texture */
+  .pdf-page::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 20% 10%, rgba(255,245,220,0.4), transparent 55%),
+                radial-gradient(ellipse at 80% 90%, rgba(220,230,245,0.25), transparent 55%);
+  }
+  .pdf-inner {
+    position: relative;
+    padding: 56px 64px;
+    height: 100%;
+  }
+  .pdf-inner h1 {
+    font-size: 22px; font-weight: 600; margin: 0 0 6px; letter-spacing: 0.01em;
+  }
+  .pdf-inner .sub {
+    font-family: var(--font-sans); font-size: 11px; color: #6b6660; letter-spacing: 0.1em;
+    margin-bottom: 28px;
+  }
+  .pdf-inner p {
+    font-size: 11.5px; line-height: 1.75; margin: 0 0 14px; color: #2a2622;
+  }
+  .pdf-inner .tbl {
+    width: 100%; font-family: var(--font-sans); font-size: 10.5px;
+    border-collapse: collapse; margin: 10px 0 18px;
+  }
+  .pdf-inner .tbl th, .pdf-inner .tbl td {
+    padding: 7px 10px; text-align: left;
+    border-bottom: 1px solid #d8d2c4;
+  }
+  .pdf-inner .tbl th { color: #6b6660; font-weight: 500; font-size: 9.5px; letter-spacing: 0.08em; }
+  .pdf-inner .sig {
+    margin-top: 32px; display: flex; gap: 40px; font-size: 10px; color: #6b6660;
+  }
+  .pdf-inner .sig .line {
+    flex: 1; border-bottom: 1px solid #8a8474; height: 26px; margin-bottom: 4px;
+  }
+
+  /* --- Region boxes overlay --- */
+  .regions {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+  .region {
+    position: absolute;
+    border-radius: 4px;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: all 220ms cubic-bezier(.2,.8,.2,1);
+    /* base style = unapproved, pending — visible fill + clear rim */
+    background: color-mix(in srgb, var(--tint) 14%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--tint) 75%, transparent);
+  }
+  .region .tag {
+    position: absolute;
+    top: -24px; left: 0;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--tint);
+    padding: 4px 10px;
+    background: rgba(20,18,16,0.92);
+    border-radius: 10px;
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+    opacity: 1;
+    transition: opacity 200ms ease, transform 160ms ease;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--tint) 55%, transparent),
+                0 0 14px color-mix(in srgb, var(--tint) 30%, transparent);
+  }
+  .region .tag .dot {
+    display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--tint);
+    margin-right: 7px; vertical-align: middle;
+    box-shadow: 0 0 8px var(--tint), 0 0 2px var(--tint);
+  }
+
+  .region.approved {
+    background: color-mix(in srgb, var(--tint) 28%, transparent);
+    box-shadow:
+      0 0 0 2.5px var(--tint),
+      0 0 28px color-mix(in srgb, var(--tint) 45%, transparent);
+  }
+  .region.rejected {
+    background: rgba(80,78,74,0.1);
+    box-shadow:
+      0 0 0 1px rgba(120,114,106,0.5);
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(120,114,106,0.08) 0 4px,
+      transparent 4px 10px
+    );
+    opacity: 0.55;
+    filter: saturate(0.3);
+  }
+
+  /* Selected = electric backlit. Uses layered box-shadow + scanning shimmer. */
+  .region.selected {
+    background: color-mix(in srgb, var(--tint) 20%, transparent);
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.3),
+      0 0 0 2px var(--accent),
+      0 0 0 4px rgba(207,230,255,0.25),
+      0 0 40px rgba(207,230,255,0.5),
+      0 0 80px color-mix(in srgb, var(--tint) 35%, transparent);
+    animation: region-breathe 2.6s ease-in-out infinite;
+  }
+  .region.selected .tag { opacity: 1; color: var(--ink-1); box-shadow: 0 0 0 1px rgba(207,230,255,0.3); }
+  @keyframes region-breathe {
+    0%,100% {
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.25),
+        0 0 0 2px var(--accent),
+        0 0 0 4px rgba(207,230,255,0.2),
+        0 0 32px rgba(207,230,255,0.4);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.4),
+        0 0 0 2px var(--accent),
+        0 0 0 6px rgba(207,230,255,0.3),
+        0 0 56px rgba(207,230,255,0.6);
+    }
+  }
+  /* scan shimmer overlay on selected region */
+  .region.selected::after {
+    content: '';
+    position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(
+      115deg,
+      transparent 30%,
+      rgba(207,230,255,0.18) 48%,
+      rgba(255,255,255,0.28) 50%,
+      rgba(207,230,255,0.18) 52%,
+      transparent 70%
+    );
+    background-size: 220% 100%;
+    animation: scan 2.8s linear infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes scan {
+    0%   { background-position: 140% 0; }
+    100% { background-position: -40% 0; }
+  }
+
+  .region:hover:not(.selected) {
+    background: color-mix(in srgb, var(--tint) 22%, transparent);
+    box-shadow:
+      0 0 0 2.5px var(--tint),
+      0 0 28px color-mix(in srgb, var(--tint) 35%, transparent);
+  }
+
+  /* --- Bottom bar: approve/reject + continue --- */
+  .bottom {
+    grid-area: bottom;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px 24px;
+  }
+  .selection-ctrls {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .selection-ctrls .sel-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    margin-right: 14px;
+  }
+  .selection-ctrls .sel-label strong { color: var(--ink-1); font-weight: 500; }
+  .btn.approve {
+    background: rgba(180,240,210,0.06);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px rgba(180,240,210,0.18);
+  }
+  .btn.approve:hover {
+    background: rgba(180,240,210,0.12);
+    box-shadow: 0 0 0 1px rgba(180,240,210,0.4), 0 0 18px rgba(180,240,210,0.18);
+  }
+  .btn.reject {
+    background: rgba(255,190,180,0.05);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px rgba(255,190,180,0.14);
+  }
+  .btn.reject:hover {
+    background: rgba(255,190,180,0.1);
+    box-shadow: 0 0 0 1px rgba(255,190,180,0.3), 0 0 18px rgba(255,190,180,0.14);
+  }
+
+  /* --- Right rail: instruments --- */
+  .insp {
+    grid-area: insp;
+    padding: 28px 32px 28px 12px;
+    display: flex; flex-direction: column; gap: 16px;
+    overflow: hidden;
+  }
+  .panel {
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.035),
+      0 1px 0 rgba(0,0,0,0.35),
+      0 12px 32px rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+  }
+  .panel-head .ttl {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.18em;
+    color: var(--ink-2);
+  }
+  .panel-head .status {
+    font-family: var(--font-mono);
+    font-size: 9.5px; letter-spacing: 0.16em;
+    padding: 3px 9px; border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    color: var(--ink-3);
+  }
+  .panel-head .status.ready {
+    background: rgba(207,230,255,0.1);
+    color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(207,230,255,0.2), 0 0 12px rgba(207,230,255,0.15);
+  }
+  .panel-head .status.pending {
+    background: rgba(255,255,255,0.04);
+    color: var(--ink-3);
+  }
+  .panel-body {
+    padding: 0 20px 20px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    line-height: 1.55;
+  }
+  .kv {
+    display: grid; grid-template-columns: 90px 1fr;
+    gap: 10px 14px;
+    font-size: 12px;
+  }
+  .kv .k {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em;
+    color: var(--ink-3);
+  }
+  .kv .v { color: var(--ink-1); }
+  .kv .v .tint-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-right: 8px; vertical-align: middle;
+  }
+  .confidence {
+    margin-top: 4px;
+    height: 4px; border-radius: 2px; background: rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  .confidence .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), rgba(207,230,255,0.3));
+    box-shadow: 0 0 8px rgba(207,230,255,0.4);
+  }
+
+  /* AI Read collapsed state */
+  .panel.ai-read.collapsed .panel-body { display: none; }
+  .panel.ai-read.collapsed { background: rgba(255,255,255,0.015); }
+  .panel.ai-read.collapsed .panel-head { padding: 14px 20px; }
+  .panel.ai-read .panel-body.text {
+    font-family: var(--font-serif);
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--ink-1);
+    white-space: pre-wrap;
+  }
+  .panel.ai-read .panel-body.text .meta {
+    display: flex; gap: 14px;
+    margin-top: 14px;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em;
+    color: var(--ink-3);
+  }
+
+  /* Action row inside object inspector */
+  .inspector-actions {
+    display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .mini-btn {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.1em;
+    padding: 7px 12px; border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    color: var(--ink-2); cursor: pointer;
+    transition: all 160ms ease;
+  }
+  .mini-btn:hover {
+    color: var(--ink-1);
+    background: rgba(207,230,255,0.08);
+    box-shadow: 0 0 0 1px rgba(207,230,255,0.2), 0 0 14px rgba(207,230,255,0.1);
+  }
+
+  /* Summary strip in bottom area */
+  .summary {
+    display: flex; gap: 22px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--ink-3);
+  }
+  .summary b { color: var(--ink-1); font-weight: 500; }
+
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- TOP ================================================ -->
+    <div class="top">
+      <div class="brand"><span class="dot"></span> PDFer</div>
+      <div class="file-title">tax-return-2025-draft.pdf <span class="pg">PAGE 4 / 9</span></div>
+      <div class="top-actions">
+        <button class="btn"><span class="glyph">◐</span>Run Gemma</button>
+        <button class="btn primary">Continue → Assemble</button>
+      </div>
+    </div>
+
+    <!-- LEFT RAIL ========================================== -->
+    <div class="rail">
+      <div class="stages">
+        <div class="stage past"><div class="node"></div><div class="label">Ingest</div></div>
+        <div class="stage past"><div class="node"></div><div class="label">Detect</div></div>
+        <div class="stage current"><div class="node"></div><div class="label">Review</div></div>
+        <div class="stage"><div class="node"></div><div class="label">Assemble</div></div>
+        <div class="stage"><div class="node"></div><div class="label">Export</div></div>
+      </div>
+
+      <div>
+        <div class="thumbs-title">PAGES</div>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+    </div>
+
+    <!-- CENTER STAGE ======================================= -->
+    <div class="stage-area">
+      <div class="page-halo">
+        <div class="pdf-page">
+          <div class="pdf-inner">
+            <h1>Form 1040 — Individual Tax Return</h1>
+            <div class="sub">TAX YEAR 2025 &nbsp;·&nbsp; DRAFT</div>
+
+            <p>This return summarizes the individual income, deductions, and credits
+               for the filing period. Figures are reported in U.S. dollars and
+               reflect the taxpayer's position as of the preparation date.</p>
+
+            <p>The schedules on the following pages expand each line item. Amounts
+               subject to adjustment are noted and cross-referenced to supporting
+               worksheets attached as appendices.</p>
+
+            <table class="tbl">
+              <thead><tr><th>LINE</th><th>DESCRIPTION</th><th>AMOUNT</th></tr></thead>
+              <tbody>
+                <tr><td>1a</td><td>Wages, salaries, tips</td><td>$ 148,200.00</td></tr>
+                <tr><td>2b</td><td>Taxable interest</td><td>$     3,428.17</td></tr>
+                <tr><td>7</td><td>Capital gain or loss</td><td>$    12,950.00</td></tr>
+                <tr><td>9</td><td>Total income</td><td>$ 164,578.17</td></tr>
+              </tbody>
+            </table>
+
+            <p>Signatures below attest that the entries above are true and complete
+               to the best of the preparer's knowledge. Filing status was verified
+               against prior-year records.</p>
+
+            <div class="sig">
+              <div><div class="line"></div>TAXPAYER SIGNATURE</div>
+              <div><div class="line"></div>DATE</div>
+            </div>
+          </div>
+
+          <!-- REGION OVERLAYS ============================== -->
+          <div class="regions" id="regions">
+            <!-- title block: text -->
+            <div class="region approved" data-id="r1"
+                 style="--tint: var(--type-text); top: 48px; left: 56px; width: 420px; height: 58px;">
+              <div class="tag"><span class="dot"></span>TEXT · TITLE</div>
+            </div>
+            <!-- prose paragraph 1: text -->
+            <div class="region approved" data-id="r2"
+                 style="--tint: var(--type-text); top: 130px; left: 56px; width: 510px; height: 78px;">
+              <div class="tag"><span class="dot"></span>TEXT · PARAGRAPH</div>
+            </div>
+            <!-- prose paragraph 2: text -->
+            <div class="region" data-id="r3"
+                 style="--tint: var(--type-text); top: 220px; left: 56px; width: 510px; height: 62px;">
+              <div class="tag"><span class="dot"></span>TEXT · PARAGRAPH</div>
+            </div>
+            <!-- table: selected -->
+            <div class="region selected" data-id="r4"
+                 style="--tint: var(--type-table); top: 294px; left: 56px; width: 510px; height: 178px;">
+              <div class="tag"><span class="dot"></span>TABLE · FINANCIAL</div>
+            </div>
+            <!-- closing paragraph: rejected -->
+            <div class="region rejected" data-id="r5"
+                 style="--tint: var(--type-text); top: 484px; left: 56px; width: 510px; height: 58px;">
+              <div class="tag"><span class="dot"></span>TEXT · PARAGRAPH</div>
+            </div>
+            <!-- signature block: signature -->
+            <div class="region" data-id="r6"
+                 style="--tint: var(--type-signature); top: 576px; left: 56px; width: 510px; height: 68px;">
+              <div class="tag"><span class="dot"></span>SIGNATURE BLOCK</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM ============================================= -->
+    <div class="bottom">
+      <div class="selection-ctrls">
+        <div class="sel-label">SELECTED · <strong>TABLE · FINANCIAL</strong></div>
+        <button class="btn approve">✓ Approve</button>
+        <button class="btn reject">✕ Reject</button>
+        <button class="btn">↻ Re-detect</button>
+        <button class="btn">⟶ Change type</button>
+      </div>
+      <div class="summary">
+        <span><b>2</b> APPROVED</span>
+        <span><b>1</b> REJECTED</span>
+        <span><b>3</b> PENDING</span>
+      </div>
+    </div>
+
+    <!-- RIGHT RAIL ========================================= -->
+    <div class="insp">
+      <!-- Object Inspector -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="ttl">OBJECT INSPECTOR</div>
+          <div class="status ready">SELECTED</div>
+        </div>
+        <div class="panel-body">
+          <div class="kv">
+            <div class="k">TYPE</div>
+            <div class="v"><span class="tint-dot" style="background: var(--type-table); box-shadow: 0 0 6px var(--type-table);"></span>Table · Financial</div>
+            <div class="k">REGION</div>
+            <div class="v" style="font-family: var(--font-mono); font-size: 11px;">510 × 178 px</div>
+            <div class="k">ROWS</div>
+            <div class="v">4 rows × 3 cols</div>
+            <div class="k">CONFIDENCE</div>
+            <div class="v">
+              0.94
+              <div class="confidence"><div class="fill" style="width: 94%"></div></div>
+            </div>
+            <div class="k">STATUS</div>
+            <div class="v">Pending review</div>
+          </div>
+
+          <div class="inspector-actions">
+            <div class="mini-btn">Preview tuples</div>
+            <div class="mini-btn">Adjust bounds</div>
+            <div class="mini-btn">Split region</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Read — READY state, expanded -->
+      <div class="panel ai-read">
+        <div class="panel-head">
+          <div class="ttl">AI READ</div>
+          <div class="status ready">READY · GEMMA</div>
+        </div>
+        <div class="panel-body text">
+This table summarizes the taxpayer's income sources for 2025. Four line items are reported: wages ($148,200), taxable interest ($3,428.17), capital gains ($12,950), and a total income line ($164,578.17). The total reconciles with the sum of lines 1a, 2b, and 7.
+          <div class="meta">
+            <span>164 tokens</span>
+            <span>1.2s</span>
+            <span>gemma-3-4b</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Read — PENDING state (collapsed example for next region) -->
+      <div class="panel ai-read collapsed">
+        <div class="panel-head">
+          <div class="ttl">AI READ · SIGNATURE BLOCK</div>
+          <div class="status pending">PENDING</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  /* Build page thumbnails */
+  const thumbs = document.getElementById('thumbs');
+  for (let i = 1; i <= 9; i++) {
+    const t = document.createElement('div');
+    t.className = 'thumb' + (i === 4 ? ' active' : '') + (i < 4 ? ' done' : '');
+    t.innerHTML = `<span class="n">${String(i).padStart(2,'0')}</span>`;
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.thumb.active').forEach(n => n.classList.remove('active'));
+      t.classList.add('active');
+    });
+    thumbs.appendChild(t);
+  }
+
+  /* Region selection — click to select; multi-state rotation for demo */
+  const regions = document.querySelectorAll('.region');
+  regions.forEach(r => {
+    r.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.region.selected').forEach(n => n.classList.remove('selected'));
+      r.classList.add('selected');
+    });
+  });
+  /* click outside deselects */
+  document.querySelector('.stage-area').addEventListener('click', () => {
+    document.querySelectorAll('.region.selected').forEach(n => n.classList.remove('selected'));
+  });
+</script>
+</body>
+</html>

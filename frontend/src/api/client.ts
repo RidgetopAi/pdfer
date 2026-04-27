@@ -357,3 +357,88 @@ export function connectWebSocket(docId: string, onMessage: (event: string, data:
   };
   return ws;
 }
+
+/* =====================================================================
+   Training corpus — stats + per-doc YOLO export.
+   The export endpoint streams a zip in canonical Ultralytics format
+   (images/, labels/, data.yaml). Stats lets the dashboard show how big
+   the corpus is across all docs without downloading anything.
+===================================================================== */
+
+export interface TrainingExportStats {
+  pages_complete: number;
+  pages_in_progress: number;
+  exportable_boxes: number;
+  manual_boxes_total: number;
+  confirmed_boxes_total: number;
+  per_class: Record<string, number>;
+  per_document: { document_id: string; filename: string; pages_complete: number }[];
+}
+
+export async function fetchTrainingExportStats(): Promise<TrainingExportStats> {
+  const res = await fetch(`${API_BASE}/training/yolo-export-stats`);
+  if (!res.ok) throw new Error(`Failed to load training stats: ${res.status}`);
+  return res.json();
+}
+
+export function yoloExportUrl(docId: string, includeInProgress = false): string {
+  const qs = includeInProgress ? "?include_in_progress=true" : "";
+  return `${API_BASE}/documents/${docId}/yolo-export${qs}`;
+}
+
+/* =====================================================================
+   Model status — which heavy model (YOLO / Gemma) currently owns the GPU,
+   plus per-model load state. Surfaced in the dashboard footer so the user
+   doesn't have to alt-tab to btop to know whether anything is running.
+===================================================================== */
+
+export type ModelLoadState = "loaded" | "unloaded";
+
+export interface ModelStatus {
+  active: "yolo" | "gemma" | null;
+  yolo: ModelLoadState;
+  gemma: ModelLoadState;
+  vram_mib: number | null;
+}
+
+export async function fetchModelStatus(): Promise<ModelStatus> {
+  const res = await fetch(`${API_BASE}/models/status`);
+  if (!res.ok) throw new Error(`Failed to load model status: ${res.status}`);
+  return res.json();
+}
+
+/* =====================================================================
+   Settings endpoint (Phase 4).
+   Backend implementation pending — see Mandrel task effdeb1c.
+   Until it lands, GET returns 404, which the UI renders as
+   "Backend endpoint pending" rather than silent failure.
+===================================================================== */
+
+export interface SettingsResponse {
+  watch_folder: string | null;
+}
+
+export class SettingsNotImplementedError extends Error {
+  constructor() {
+    super("Settings endpoint not implemented by backend");
+    this.name = "SettingsNotImplementedError";
+  }
+}
+
+export async function fetchSettings(): Promise<SettingsResponse> {
+  const res = await fetch(`${API_BASE}/settings`);
+  if (res.status === 404) throw new SettingsNotImplementedError();
+  if (!res.ok) throw new Error(`Failed to load settings: ${res.status}`);
+  return res.json();
+}
+
+export async function updateSettings(payload: { watch_folder: string }): Promise<SettingsResponse> {
+  const res = await fetch(`${API_BASE}/settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (res.status === 404) throw new SettingsNotImplementedError();
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}

@@ -1,0 +1,50 @@
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  padding: 0 0 28px;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 0 0;
+}
+
+.back {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 14px;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+.back:hover {
+  color: var(--ink-1);
+  background: rgba(207, 230, 255, 0.06);
+  box-shadow: 0 0 0 1px rgba(207, 230, 255, 0.15);
+}
+
+.stages {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  position: relative;
+  padding-left: 14px;
+}
+.stages::before {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}

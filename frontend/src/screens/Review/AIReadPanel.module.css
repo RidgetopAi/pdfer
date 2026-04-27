@@ -1,0 +1,39 @@
+.wrap {
+  overflow: hidden;
+}
+
+.text {
+  font-family: var(--font-serif);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink-1);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.meta {
+  display: flex;
+  gap: 14px;
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.failed {
+  color: rgb(255, 170, 160);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.emptyHint {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  text-align: center;
+  padding: 12px 0;
+  line-height: 1.7;
+}
