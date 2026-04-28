@@ -13,7 +13,9 @@ interface PageStageProps {
   selectedIds: Set<string>;
   pageId: string;
   mode: "select" | "draw";
-  onSelect: (id: string | null) => void;
+  // multi=true toggles the id in/out of the current selection set
+  // (shift/cmd/ctrl-click). multi=false replaces the selection.
+  onSelect: (id: string | null, multi?: boolean) => void;
   // Bbox edits — coords are returned in ORIGINAL pixel space (the same space
   // backend stores), already clamped to the page rect. Caller dispatches
   // through useObjectEdits.
@@ -86,20 +88,24 @@ export function PageStage({
     };
   }, [imageUrl]);
 
-  // Pull selected object out of the list — there's at most one in current UI
-  // (multi-select isn't surfaced yet). Put after the rest in z-order so it's on top.
-  const selectedObject = objects.find((o) => selectedIds.has(o.id)) ?? null;
+  // "Primary" selected object = most recently added to the selection set.
+  // It's the one that owns the Konva Transformer (drag/resize handles).
+  // Other selected ids ("secondary") render with their tinted Konva rect so
+  // they're still clickable for shift-toggle, with the HTML RegionOverlay
+  // painting the electric backlit treatment on top of all selected ids.
+  const primaryId = selectedIds.size > 0 ? Array.from(selectedIds).at(-1) ?? null : null;
+  const primaryObject = primaryId ? objects.find((o) => o.id === primaryId) ?? null : null;
 
-  // Bind transformer to the selected rect after each render where selection changes.
+  // Bind transformer to the primary rect after each render where it changes.
   useEffect(() => {
     if (!transformerRef.current) return;
-    if (selectedRectRef.current && selectedObject && mode === "select") {
+    if (selectedRectRef.current && primaryObject && mode === "select") {
       transformerRef.current.nodes([selectedRectRef.current]);
     } else {
       transformerRef.current.nodes([]);
     }
     transformerRef.current.getLayer()?.batchDraw();
-  }, [selectedObject, mode, displayWidth]);
+  }, [primaryObject, mode, displayWidth]);
 
   function clampToPage(b: BboxPx): BboxPx {
     return {
@@ -175,9 +181,12 @@ export function PageStage({
           />
         )}
 
-        {/* Non-selected rects */}
+        {/* All rects except the primary selected (which gets the invisible
+            draggable rect + Transformer below). Secondary-selected rects render
+            here so they remain clickable for shift-toggle; the HTML overlay
+            paints the electric treatment on top of all selected ids. */}
         {objects.map((obj) => {
-          if (selectedIds.has(obj.id)) return null;
+          if (obj.id === primaryId) return null;
           const color = colorForLabel(obj.label);
           const x = obj.bbox_x1 * scale;
           const y = obj.bbox_y1 * scale;
@@ -205,7 +214,9 @@ export function PageStage({
               onClick={(e) => {
                 if (mode !== "select") return;
                 e.cancelBubble = true;
-                onSelect(obj.id);
+                const evt = e.evt as MouseEvent;
+                const multi = evt.shiftKey || evt.metaKey || evt.ctrlKey;
+                onSelect(obj.id, multi);
               }}
               onTap={(e) => {
                 if (mode !== "select") return;
@@ -216,15 +227,15 @@ export function PageStage({
           );
         })}
 
-        {/* Selected rect — invisible visual (HTML overlay paints the pretty
-            box on top), but draggable + resizable via the Transformer. */}
-        {selectedObject && (
+        {/* Primary selected rect — invisible visual (HTML overlay paints the
+            pretty box on top), but draggable + resizable via the Transformer. */}
+        {primaryObject && (
           <Rect
             ref={selectedRectRef}
-            x={selectedObject.bbox_x1 * scale}
-            y={selectedObject.bbox_y1 * scale}
-            width={(selectedObject.bbox_x2 - selectedObject.bbox_x1) * scale}
-            height={(selectedObject.bbox_y2 - selectedObject.bbox_y1) * scale}
+            x={primaryObject.bbox_x1 * scale}
+            y={primaryObject.bbox_y1 * scale}
+            width={(primaryObject.bbox_x2 - primaryObject.bbox_x1) * scale}
+            height={(primaryObject.bbox_y2 - primaryObject.bbox_y1) * scale}
             fill="rgba(0,0,0,0.001)"  // near-invisible but still hit-testable
             draggable={mode === "select"}
             listening={mode === "select"}
@@ -240,7 +251,7 @@ export function PageStage({
                 bbox_x2: (newX + w) / scale,
                 bbox_y2: (newY + h) / scale,
               });
-              onBboxChange(selectedObject.id, "move", bbox);
+              onBboxChange(primaryObject.id, "move", bbox);
             }}
             onTransformEnd={(e) => {
               const node = e.target as Konva.Rect;
@@ -257,7 +268,7 @@ export function PageStage({
                 bbox_x2: (node.x() + newW) / scale,
                 bbox_y2: (node.y() + newH) / scale,
               });
-              onBboxChange(selectedObject.id, "resize", bbox);
+              onBboxChange(primaryObject.id, "resize", bbox);
             }}
           />
         )}
@@ -315,11 +326,12 @@ interface RectStyle {
 
 function rectStyleFor(status: string, color: string): RectStyle {
   switch (status) {
-    case "confirmed": // approved
+    case "confirmed": // approved — dashed rim distinguishes from pending solid at a glance
       return {
         stroke: color,
         strokeWidth: 2.5,
         fill: rgba(color, 0.28),
+        dash: [10, 5],
         opacity: 1,
         shadowBlur: 18,
         shadowOpacity: 0.45,

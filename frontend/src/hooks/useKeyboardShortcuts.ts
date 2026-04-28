@@ -10,6 +10,9 @@ export interface ShortcutHandlers {
   onEscape?: () => void;
   onDelete?: () => void;
   onToggleDraw?: () => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onZoomReset?: () => void;
 }
 
 /**
@@ -48,6 +51,25 @@ export function useKeyboardShortcuts(enabled: boolean, handlers: ShortcutHandler
       if ((mod && e.shiftKey && e.key.toLowerCase() === "z") || (mod && e.key.toLowerCase() === "y")) {
         e.preventDefault();
         handlers.onRedo?.();
+        return;
+      }
+
+      // Zoom — Ctrl/Cmd + (+ / - / 0). The "+" key reports as "=" on most
+      // US layouts unless shift is held; accept both so users don't have to
+      // think about it.
+      if (mod && (e.key === "+" || e.key === "=")) {
+        e.preventDefault();
+        handlers.onZoomIn?.();
+        return;
+      }
+      if (mod && (e.key === "-" || e.key === "_")) {
+        e.preventDefault();
+        handlers.onZoomOut?.();
+        return;
+      }
+      if (mod && e.key === "0") {
+        e.preventDefault();
+        handlers.onZoomReset?.();
         return;
       }
 

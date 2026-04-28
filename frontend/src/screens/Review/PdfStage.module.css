@@ -1,10 +1,15 @@
 .stage {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 24px;
+  /* `safe center` keeps the page centered when it fits, but switches to
+     start-alignment when the page is bigger than the container so the
+     scrollbar can actually reach the top/left edges. Without `safe`,
+     `center` clips overflow symmetrically and locks the user out of the
+     top of the document when zoomed in. */
+  align-items: safe center;
+  justify-content: safe center;
+  padding: 24px;
   position: relative;
-  overflow: hidden;
+  overflow: auto;
   height: 100%;
 }
 

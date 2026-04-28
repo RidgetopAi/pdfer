@@ -17,6 +17,7 @@ export function useObjectEdits(docId: string | undefined) {
   const qc = useQueryClient();
   const showToast = useReviewStore((s) => s.showToast);
   const setFlash = useReviewStore((s) => s.setFlashObjectIds);
+  const selectObject = useReviewStore((s) => s.selectObject);
 
   const approve = useMutation({
     mutationFn: (objectId: string) => {
@@ -36,10 +37,51 @@ export function useObjectEdits(docId: string | undefined) {
     onError: (e) => showToast(`Approve failed: ${(e as Error).message}`),
   });
 
+  // Batch approve: one submitEdits call → one undo entry rewinds the whole
+  // selection. Caller is expected to pre-filter ids that are already
+  // confirmed (skip in the UI), but we no-op safely on an empty list.
+  const approveMany = useMutation({
+    mutationFn: (objectIds: string[]) => {
+      if (!docId) throw new Error("No document");
+      if (objectIds.length === 0) throw new Error("Nothing to approve");
+      const edits: EditAction[] = objectIds.map((id) => ({ action: "confirm", object_id: id }));
+      return submitEdits(docId, edits);
+    },
+    onSuccess: (batch) => {
+      if (!docId) return;
+      qc.invalidateQueries({ queryKey: ["objects", docId] });
+      qc.invalidateQueries({ queryKey: ["reviewStats", docId] });
+      qc.invalidateQueries({ queryKey: ["undoState", docId] });
+      showToast(batch.description, "undo");
+      setFlash(new Set(batch.affected_objects.map((o) => o.id)));
+      setTimeout(() => setFlash(new Set()), 600);
+    },
+    onError: (e) => showToast(`Approve failed: ${(e as Error).message}`),
+  });
+
   const reject = useMutation({
     mutationFn: (objectId: string) => {
       if (!docId) throw new Error("No document");
       const edits: EditAction[] = [{ action: "reject", object_id: objectId }];
+      return submitEdits(docId, edits);
+    },
+    onSuccess: (batch) => {
+      if (!docId) return;
+      qc.invalidateQueries({ queryKey: ["objects", docId] });
+      qc.invalidateQueries({ queryKey: ["reviewStats", docId] });
+      qc.invalidateQueries({ queryKey: ["undoState", docId] });
+      showToast(batch.description, "undo");
+      setFlash(new Set(batch.affected_objects.map((o) => o.id)));
+      setTimeout(() => setFlash(new Set()), 600);
+    },
+    onError: (e) => showToast(`Reject failed: ${(e as Error).message}`),
+  });
+
+  const rejectMany = useMutation({
+    mutationFn: (objectIds: string[]) => {
+      if (!docId) throw new Error("No document");
+      if (objectIds.length === 0) throw new Error("Nothing to reject");
+      const edits: EditAction[] = objectIds.map((id) => ({ action: "reject", object_id: id }));
       return submitEdits(docId, edits);
     },
     onSuccess: (batch) => {
@@ -143,6 +185,9 @@ export function useObjectEdits(docId: string | undefined) {
   // with source='manual' and status='unreviewed' (the backend marks both).
   // Manual rows are gold for the YOLO fine-tune corpus: detector missed,
   // human supplied ground truth.
+  // On success we auto-select the new region so the inspector's type picker
+  // is immediately visible — the next action after drawing is almost always
+  // setting the right label.
   const create = useMutation({
     mutationFn: (args: {
       pageId: string;
@@ -161,6 +206,8 @@ export function useObjectEdits(docId: string | undefined) {
       qc.invalidateQueries({ queryKey: ["reviewStats", docId] });
       qc.invalidateQueries({ queryKey: ["undoState", docId] });
       showToast(batch.description, "undo");
+      const newId = batch.affected_objects[0]?.id;
+      if (newId) selectObject(newId);
       setFlash(new Set(batch.affected_objects.map((o) => o.id)));
       setTimeout(() => setFlash(new Set()), 600);
     },
@@ -183,5 +230,25 @@ export function useObjectEdits(docId: string | undefined) {
     onError: (e) => showToast(`Delete failed: ${(e as Error).message}`),
   });
 
-  return { approve, reject, autoConfirm, undo, redo, resize, move, create, del };
+  // Change an object's type. Server marks extraction_stale so the new label
+  // gets re-extracted when the user advances to the Extract stage.
+  const relabel = useMutation({
+    mutationFn: (args: { objectId: string; label: string }) => {
+      if (!docId) throw new Error("No document");
+      const edits: EditAction[] = [{ action: "relabel", object_id: args.objectId, label: args.label }];
+      return submitEdits(docId, edits);
+    },
+    onSuccess: (batch) => {
+      if (!docId) return;
+      qc.invalidateQueries({ queryKey: ["objects", docId] });
+      qc.invalidateQueries({ queryKey: ["reviewStats", docId] });
+      qc.invalidateQueries({ queryKey: ["undoState", docId] });
+      showToast(batch.description, "undo");
+      setFlash(new Set(batch.affected_objects.map((o) => o.id)));
+      setTimeout(() => setFlash(new Set()), 600);
+    },
+    onError: (e) => showToast(`Relabel failed: ${(e as Error).message}`),
+  });
+
+  return { approve, approveMany, reject, rejectMany, autoConfirm, undo, redo, resize, move, create, del, relabel };
 }

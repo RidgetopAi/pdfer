@@ -40,7 +40,20 @@ interface ReviewState {
   // Track which objects were affected by last action (for flash)
   flashObjectIds: Set<string>;
   setFlashObjectIds: (ids: Set<string>) => void;
+
+  // User zoom multiplier — layered on top of fit-to-container.
+  // 1.0 = fit. Range clamped to [ZOOM_MIN, ZOOM_MAX].
+  userZoom: number;
+  setUserZoom: (z: number) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
 }
+
+export const ZOOM_MIN = 0.5;
+export const ZOOM_MAX = 4;
+export const ZOOM_STEP = 0.1;
+const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(z * 100) / 100));
 
 export const useReviewStore = create<ReviewState>((set) => ({
   currentPageIndex: 0,
@@ -75,4 +88,10 @@ export const useReviewStore = create<ReviewState>((set) => ({
 
   flashObjectIds: new Set(),
   setFlashObjectIds: (ids) => set({ flashObjectIds: ids }),
+
+  userZoom: 1,
+  setUserZoom: (z) => set({ userZoom: clampZoom(z) }),
+  zoomIn: () => set((s) => ({ userZoom: clampZoom(s.userZoom + ZOOM_STEP) })),
+  zoomOut: () => set((s) => ({ userZoom: clampZoom(s.userZoom - ZOOM_STEP) })),
+  resetZoom: () => set({ userZoom: 1 }),
 }));

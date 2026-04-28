@@ -38,6 +38,10 @@ export function Review() {
   const setViewMode = useReviewStore((s) => s.setViewMode);
   const mode = useReviewStore((s) => s.mode);
   const setMode = useReviewStore((s) => s.setMode);
+  const userZoom = useReviewStore((s) => s.userZoom);
+  const zoomIn = useReviewStore((s) => s.zoomIn);
+  const zoomOut = useReviewStore((s) => s.zoomOut);
+  const resetZoom = useReviewStore((s) => s.resetZoom);
   const queryClient = useQueryClient();
 
   const docQuery = useQuery({
@@ -92,20 +96,52 @@ export function Review() {
     return objectsQuery.data.pages.flatMap((p) => p.objects);
   }, [objectsQuery.data]);
 
-  // Selected object for inspector + AI Read — picks the first selected id
-  // that exists on the current page (multi-select UI comes later).
+  // Per-page review progress for the thumbnail badges. "reviewed" = confirmed
+  // OR rejected; once it equals total the badge flips to the green done state.
+  const pageProgress = useMemo(() => {
+    const map = new Map<string, { total: number; reviewed: number }>();
+    if (!objectsQuery.data) return map;
+    for (const p of objectsQuery.data.pages) {
+      const total = p.objects.length;
+      const reviewed = p.objects.filter((o) => o.status === "confirmed" || o.status === "rejected").length;
+      map.set(p.page_id, { total, reviewed });
+    }
+    return map;
+  }, [objectsQuery.data]);
+
+  // All selected objects on the current page, for batch actions. Order
+  // mirrors page-document order, NOT selection order — that's fine for
+  // bulk operations but the "primary" (last-clicked) is computed below
+  // from the selection set's insertion order.
+  const selectedObjects: DetectedObject[] = useMemo(() => {
+    if (selectedIds.size === 0) return [];
+    return objectsForPage.filter((o) => selectedIds.has(o.id));
+  }, [selectedIds, objectsForPage]);
+
+  // Primary = last-added id in the selection set (Set preserves insertion
+  // order). The inspector reads this so it tracks the most recent click,
+  // matching the Konva Transformer attachment in PageStage.
   const selectedObject: DetectedObject | null = useMemo(() => {
     if (selectedIds.size === 0) return null;
-    for (const obj of objectsForPage) {
-      if (selectedIds.has(obj.id)) return obj;
-    }
-    return null;
+    const lastId = Array.from(selectedIds).at(-1);
+    if (!lastId) return null;
+    return objectsForPage.find((o) => o.id === lastId) ?? null;
   }, [selectedIds, objectsForPage]);
 
   const totalPages = pages.length;
   useKeyboardShortcuts(Boolean(doc), {
-    onApprove: () => { if (selectedObject && selectedObject.status !== "confirmed") edits.approve.mutate(selectedObject.id); },
-    onReject:  () => { if (selectedObject && selectedObject.status !== "rejected") edits.reject.mutate(selectedObject.id); },
+    onApprove: () => {
+      const targets = selectedObjects.filter((o) => o.status !== "confirmed").map((o) => o.id);
+      if (targets.length === 0) return;
+      if (targets.length === 1) edits.approve.mutate(targets[0]);
+      else edits.approveMany.mutate(targets);
+    },
+    onReject: () => {
+      const targets = selectedObjects.filter((o) => o.status !== "rejected").map((o) => o.id);
+      if (targets.length === 0) return;
+      if (targets.length === 1) edits.reject.mutate(targets[0]);
+      else edits.rejectMany.mutate(targets);
+    },
     onNextPage: () => { if (totalPages > 0) setCurrentPageIndex(Math.min(currentPageIndex + 1, totalPages - 1)); },
     onPrevPage: () => { if (totalPages > 0) setCurrentPageIndex(Math.max(currentPageIndex - 1, 0)); },
     onUndo: () => edits.undo.mutate(),
@@ -122,6 +158,9 @@ export function Review() {
       if (viewMode === "diff") setViewMode("review");
       else deselectAll();
     },
+    onZoomIn: () => zoomIn(),
+    onZoomOut: () => zoomOut(),
+    onZoomReset: () => resetZoom(),
   });
 
   if (docQuery.isLoading) {
@@ -178,6 +217,35 @@ export function Review() {
           >
             {mode === "draw" ? "✎ Drawing…" : "✎ Draw"}
           </Button>
+          <div className={styles.zoomCluster} role="group" aria-label="Zoom">
+            <button
+              type="button"
+              className={styles.zoomBtn}
+              onClick={zoomOut}
+              title="Zoom out (Ctrl/⌘ −)"
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className={styles.zoomReadout}
+              onClick={resetZoom}
+              title="Reset to fit (Ctrl/⌘ 0)"
+              aria-label={`Zoom ${Math.round(userZoom * 100)} percent — click to fit`}
+            >
+              {Math.round(userZoom * 100)}%
+            </button>
+            <button
+              type="button"
+              className={styles.zoomBtn}
+              onClick={zoomIn}
+              title="Zoom in (Ctrl/⌘ +)"
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+          </div>
           {viewMode === "diff" && (
             <Button
               variant="ghost"
@@ -217,6 +285,7 @@ export function Review() {
             pages={pages}
             activeIndex={currentPageIndex}
             onSelect={setCurrentPageIndex}
+            progress={pageProgress}
           />
         </div>
       )}
@@ -273,6 +342,7 @@ export function Review() {
         <ReviewActionBar
           docId={doc.id}
           selected={selectedObject}
+          selectedAll={selectedObjects}
           stats={reviewStatsQuery.data}
           canContinue={
             doc.current_stage >= 1 &&
@@ -291,7 +361,13 @@ export function Review() {
       {/* RIGHT RAIL — upper stack scrolls behind pinned Original thumb */}
       <div className={styles.insp}>
         <div className={styles.inspScroll}>
-          <ObjectInspector selected={selectedObject} />
+          <ObjectInspector
+            selected={selectedObject}
+            multiCount={selectedObjects.length}
+            multiObjects={selectedObjects}
+            onRelabel={(objectId, label) => edits.relabel.mutate({ objectId, label })}
+            relabelPending={edits.relabel.isPending}
+          />
           <AIReadPanel selected={selectedObject} />
           <AutoConfirmPanel
             objects={allObjects}

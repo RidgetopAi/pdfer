@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { pageImageUrl } from "../../api/client";
 import type { DetectedObject, PageSummary } from "../../api/client";
 import { PdfStage, type BboxPx } from "./PdfStage";
+import { useReviewStore } from "../../store/reviewStore";
 import styles from "./DiffView.module.css";
 
 interface DiffViewProps {
@@ -63,6 +64,7 @@ function OriginalPane({
 }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [displayWidth, setDisplayWidth] = useState(520);
+  const userZoom = useReviewStore((s) => s.userZoom);
 
   useEffect(() => {
     if (!wrapRef.current || !page) return;
@@ -73,17 +75,16 @@ function OriginalPane({
       if (availW <= 0 || availH <= 0) return;
       const byWidth = Math.min(availW, 820);
       const heightIfWidth = (page.height_px / page.width_px) * byWidth;
-      if (heightIfWidth > availH) {
-        setDisplayWidth((availH / page.height_px) * page.width_px);
-      } else {
-        setDisplayWidth(byWidth);
-      }
+      const fit = heightIfWidth > availH
+        ? (availH / page.height_px) * page.width_px
+        : byWidth;
+      setDisplayWidth(fit * userZoom);
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [page]);
+  }, [page, userZoom]);
 
   if (!page) {
     return (

@@ -19,6 +19,23 @@ export const LABEL_TO_KIND: Record<string, RegionKind> = {
   formula: "form",
 };
 
+// Canonical ordering for the type picker — most common first within each
+// kind cluster so the dropdown reads top-to-bottom by frequency-of-use.
+export const ALL_LABELS: readonly string[] = [
+  "paragraph",
+  "title",
+  "section_heading",
+  "list",
+  "caption",
+  "footnote",
+  "table",
+  "figure",
+  "formula",
+  "page_header",
+  "page_footer",
+  "watermark",
+] as const;
+
 export const KIND_COLOR: Record<RegionKind, string> = {
   text:      "rgb(110, 180, 255)",
   table:     "rgb(255, 170, 60)",

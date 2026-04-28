@@ -44,6 +44,7 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+.envrc
 
 # Logs / scratch
 *.log

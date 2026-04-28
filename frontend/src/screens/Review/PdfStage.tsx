@@ -30,27 +30,47 @@ export function PdfStage({ docId, page, objects, onBboxChange, onCreate }: PdfSt
   const selectObject = useReviewStore((s) => s.selectObject);
   const deselectAll = useReviewStore((s) => s.deselectAll);
   const mode = useReviewStore((s) => s.mode);
+  const userZoom = useReviewStore((s) => s.userZoom);
+  const zoomIn = useReviewStore((s) => s.zoomIn);
+  const zoomOut = useReviewStore((s) => s.zoomOut);
 
   useEffect(() => {
     if (!wrapRef.current || !page) return;
     const el = wrapRef.current;
     const measure = () => {
+      // Measure available space at zoom = 1 (fit). The user zoom multiplier
+      // is applied below so overflow scrolling kicks in past 100%.
       const available = el.clientWidth - 48;
       const availableH = el.clientHeight - 48;
       if (available <= 0 || availableH <= 0) return;
       const byWidth = Math.min(available, 820);
       const heightIfWidth = (page.height_px / page.width_px) * byWidth;
-      if (heightIfWidth > availableH) {
-        setDisplayWidth((availableH / page.height_px) * page.width_px);
-      } else {
-        setDisplayWidth(byWidth);
-      }
+      const fit = heightIfWidth > availableH
+        ? (availableH / page.height_px) * page.width_px
+        : byWidth;
+      setDisplayWidth(fit * userZoom);
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [page]);
+  }, [page, userZoom]);
+
+  // Ctrl/Cmd + wheel = zoom. Plain wheel falls through to scroll the
+  // overflow container natively when zoomed past fit.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      if (e.deltaY < 0) zoomIn();
+      else if (e.deltaY > 0) zoomOut();
+    };
+    // Must be non-passive to allow preventDefault on wheel.
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [zoomIn, zoomOut]);
 
   return (
     <div className={styles.stage} ref={wrapRef}>
@@ -71,9 +91,9 @@ export function PdfStage({ docId, page, objects, onBboxChange, onCreate }: PdfSt
               selectedIds={selectedObjectIds}
               pageId={page.id}
               mode={mode}
-              onSelect={(id) => {
+              onSelect={(id, multi) => {
                 if (id == null) deselectAll();
-                else selectObject(id);
+                else selectObject(id, multi);
               }}
               onBboxChange={onBboxChange}
               onCreate={onCreate}
