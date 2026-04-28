@@ -31,6 +31,19 @@
   cursor: not-allowed;
 }
 
+/* Soft-disabled — looks disabled but still receives clicks so callers can
+   toast a reason. Used for the "Continue → Assemble" button when reviews
+   are incomplete. */
+.btn[data-blocked="true"]:not(:disabled) {
+  opacity: 0.55;
+  cursor: help;
+}
+.btn[data-blocked="true"]:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transform: none;
+}
+
 .primary {
   background: linear-gradient(180deg, rgba(207, 230, 255, 0.22), rgba(207, 230, 255, 0.08));
   color: var(--ink-1);

@@ -1,13 +1,11 @@
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Check, X, ArrowRight, Undo2, Redo2 } from "lucide-react";
 import { Button } from "../../design";
 import {
-  extractDocument,
   fetchUndoState,
   type DetectedObject,
   type ReviewStats,
 } from "../../api/client";
-import { useReviewStore } from "../../store/reviewStore";
 import { useObjectEdits } from "../../hooks/useObjectEdits";
 import styles from "./ReviewActionBar.module.css";
 
@@ -19,31 +17,39 @@ interface ReviewActionBarProps {
   // the count badges. Empty when nothing selected.
   selectedAll: DetectedObject[];
   stats?: ReviewStats;
-  onContinue?: () => void;
-  canContinue: boolean;
+  // The "Continue" pipeline button — label, click, and disabled reasoning are
+  // owned by Review.tsx so they can reflect the doc's current pipeline state
+  // (extracting / assembling / done) rather than just review readiness.
+  continueLabel: string;
+  continueTitle: string;
+  continueDisabled: boolean;
+  continueBusy: boolean;
+  onContinue: () => void;
+  // Toast helper from the parent. Used for "you need to review N more" when
+  // the disabled Continue button is clicked.
+  onShowToast: (msg: string) => void;
+  blockedReason?: string;
 }
 
-export function ReviewActionBar({ docId, selected, selectedAll, stats, onContinue, canContinue }: ReviewActionBarProps) {
-  const qc = useQueryClient();
-  const showToast = useReviewStore((s) => s.showToast);
+export function ReviewActionBar({
+  docId,
+  selected,
+  selectedAll,
+  stats,
+  continueLabel,
+  continueTitle,
+  continueDisabled,
+  continueBusy,
+  onContinue,
+  onShowToast,
+  blockedReason,
+}: ReviewActionBarProps) {
   const { approve, approveMany, reject, rejectMany, undo, redo } = useObjectEdits(docId);
 
   const undoState = useQuery({
     queryKey: ["undoState", docId],
     queryFn: () => fetchUndoState(docId),
     staleTime: 5_000,
-  });
-
-  const extractMutation = useMutation({
-    mutationFn: () => extractDocument(docId, true),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["document", docId] });
-      qc.invalidateQueries({ queryKey: ["reviewStats", docId] });
-      qc.invalidateQueries({ queryKey: ["documents"] });
-      showToast("Extraction started");
-      onContinue?.();
-    },
-    onError: (e) => showToast(`Could not start extraction: ${(e as Error).message}`),
   });
 
   const count = selectedAll.length;
@@ -127,18 +133,27 @@ export function ReviewActionBar({ docId, selected, selectedAll, stats, onContinu
             <span><b>{stats.unreviewed}</b> PENDING</span>
           </div>
         )}
+        {/* Continue button is intentionally NOT natively `disabled` when blocked
+            by review state — instead we look enabled-but-dim and toast the
+            reason on click, so users get an explanation instead of silence.
+            We still hard-disable while the pipeline is busy (running) so
+            double-fires can't happen. */}
         <Button
           variant="primary"
           icon={<ArrowRight size={14} />}
-          disabled={!canContinue || extractMutation.isPending}
-          onClick={() => extractMutation.mutate()}
-          title={
-            !canContinue
-              ? "Approve or reject all regions before continuing"
-              : "Run extraction and advance to Assemble"
-          }
+          disabled={continueBusy}
+          onClick={() => {
+            if (continueDisabled) {
+              if (blockedReason) onShowToast(blockedReason);
+              return;
+            }
+            onContinue();
+          }}
+          aria-disabled={continueDisabled || continueBusy}
+          data-blocked={continueDisabled ? "true" : "false"}
+          title={continueTitle}
         >
-          {extractMutation.isPending ? "Starting…" : "Continue → Assemble"}
+          {continueLabel}
         </Button>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 export type InteractionMode = "select" | "draw";
-export type ViewMode = "review" | "diff";
+export type ViewMode = "review" | "diff" | "queue";
 
 export interface Toast {
   message: string;

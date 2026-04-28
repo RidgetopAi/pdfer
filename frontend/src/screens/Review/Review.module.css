@@ -14,10 +14,11 @@
   overflow: hidden;
 }
 
-/* Diff View — drop the left rail, let the stage span from the viewport
- * edge to the inspector. Keeps top/bottom/inspector identical so all
- * actions (approve, reject, Run Gemma, Esc) behave the same. */
-.app[data-view="diff"] {
+/* Diff View AND Queue View — drop the left rail, let the stage span from
+ * the viewport edge to the inspector. Keeps top/bottom/inspector identical
+ * so all actions (approve, reject, Run Gemma, Esc) behave the same. */
+.app[data-view="diff"],
+.app[data-view="queue"] {
   grid-template-columns: 1fr 340px;
   grid-template-areas:
     "top     insp"
@@ -126,6 +127,74 @@
   border-left: 1px solid rgba(255, 255, 255, 0.05);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   font-variant-numeric: tabular-nums;
+}
+
+/* "N tuples" pill — top-bar corpus indicator. Becomes greenish + glowing
+   when ready_for_training (>= 200 tuples). Click downloads the JSONL. */
+.tuplesPill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: rgba(20, 18, 16, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+  text-decoration: none;
+  cursor: pointer;
+  transition: box-shadow 120ms ease, color 120ms ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.tuplesPill:hover {
+  box-shadow: inset 0 0 0 1px rgba(207, 230, 255, 0.4);
+  color: var(--accent);
+}
+
+.tuplesPill[data-ready="true"] {
+  color: rgb(150, 230, 180);
+  box-shadow: inset 0 0 0 1px rgba(150, 230, 180, 0.4), 0 0 14px rgba(150, 230, 180, 0.18);
+}
+
+.tuplesPill[data-ready="true"]:hover {
+  box-shadow: inset 0 0 0 1px rgba(150, 230, 180, 0.6), 0 0 22px rgba(150, 230, 180, 0.28);
+  color: rgb(180, 245, 200);
+}
+
+/* Download Bundle — primary-ish accent so it reads as the success/payoff
+   action without competing with the Continue → Assemble pipeline button. */
+.bundleBtn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(150, 230, 180, 0.18), rgba(150, 230, 180, 0.06));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(150, 230, 180, 0.4),
+    0 0 18px rgba(150, 230, 180, 0.18);
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: transform 120ms var(--ease-out), box-shadow 180ms var(--ease-out);
+}
+
+.bundleBtn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 0 1px rgba(150, 230, 180, 0.6),
+    0 0 26px rgba(150, 230, 180, 0.32);
+}
+
+.bundleBtn:active {
+  transform: translateY(0);
 }
 
 .rail {

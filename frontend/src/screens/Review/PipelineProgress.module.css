@@ -1,0 +1,82 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 230, 200, 0.04), transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(207, 230, 255, 0.05), transparent 55%),
+    rgba(20, 18, 16, 0.66);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.card {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 36px 56px 32px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(60, 54, 48, 0.85), rgba(38, 34, 30, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 30px 60px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(207, 230, 255, 0.06);
+  min-width: 320px;
+  text-align: center;
+}
+
+.heading {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--ink-1);
+  margin-top: 4px;
+}
+
+.detail {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.ring {
+  display: block;
+}
+
+.ringTrack {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 3;
+}
+
+.ringFill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(207, 230, 255, 0.55));
+  transition: stroke-dashoffset 280ms var(--ease-out);
+}
+
+/* Indeterminate spin — used when we don't yet know the total. */
+@keyframes pp-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.ringSpin {
+  animation: pp-spin 1.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ringSpin { animation: none; }
+}
