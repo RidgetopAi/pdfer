@@ -196,6 +196,12 @@ async def describe_document(
     )
     await db.commit()
 
+    try:
+        from app.services.reliability import compute_document_reliability
+        await compute_document_reliability(db, doc_id)
+    except Exception as e:
+        logger.warning("Review reliability recompute failed after describe for %s: %s", doc_id, e)
+
     if broadcast_fn:
         await broadcast_fn(doc_id, "stage.completed", {
             "stage": "describe",
@@ -264,5 +270,11 @@ async def describe_single_object(
         (content, model_name, json.dumps(metadata), new_status, object_id),
     )
     await db.commit()
+
+    try:
+        from app.services.reliability import compute_document_reliability
+        await compute_document_reliability(db, r[8], object_ids=[object_id])
+    except Exception as e:
+        logger.warning("Review reliability recompute failed for object %s: %s", object_id, e)
 
     return {"object_id": object_id, "status": new_status, "description": content}

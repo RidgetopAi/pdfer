@@ -59,6 +59,7 @@ export function ObjectInspector({ selected, multiCount = 0, multiObjects = [], o
   const width = Math.abs(selected.bbox_x2 - selected.bbox_x1);
   const height = Math.abs(selected.bbox_y2 - selected.bbox_y1);
   const conf = selected.confidence ?? null;
+  const reliability = selected.review_reliability ?? null;
   const statusTone =
     selected.status === "confirmed" ? "done"
     : selected.status === "rejected" ? "error"
@@ -112,14 +113,17 @@ export function ObjectInspector({ selected, multiCount = 0, multiObjects = [], o
             {Math.round(width)} × {Math.round(height)} px
           </div>
 
-          {conf != null && (
+          {(reliability ?? conf) != null && (
             <>
-              <div className={styles.key}>CONFIDENCE</div>
+              <div className={styles.key}>RELIABILITY</div>
               <div className={styles.val}>
-                {(conf * 100).toFixed(0)}%
+                {((reliability ?? conf ?? 0) * 100).toFixed(0)}%
                 <div className={styles.confidence}>
-                  <div className={styles.confFill} style={{ width: `${conf * 100}%` }} />
+                  <div className={styles.confFill} style={{ width: `${(reliability ?? conf ?? 0) * 100}%` }} />
                 </div>
+                {conf != null && reliability != null && (
+                  <div className={styles.subtle}>YOLO {Math.round(conf * 100)}%</div>
+                )}
               </div>
             </>
           )}

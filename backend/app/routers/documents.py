@@ -266,7 +266,8 @@ async def detect_layout(doc_id: str, force: bool = False):
             page_id, page_number = pr[0], pr[1]
             obj_rows = await db.execute_fetchall(
                 """SELECT id, page_id, label, bbox_x1, bbox_y1, bbox_x2, bbox_y2,
-                          confidence, reading_order, heading_level, source, status,
+                          confidence, review_reliability, review_reliability_json,
+                          reading_order, heading_level, source, status,
                           description, description_model, description_status,
                           description_edited_by_user, asset_path
                    FROM objects WHERE page_id=? ORDER BY reading_order""",
@@ -276,12 +277,15 @@ async def detect_layout(doc_id: str, force: bool = False):
                 ObjectResponse(
                     id=o[0], page_id=o[1], label=o[2],
                     bbox_x1=o[3], bbox_y1=o[4], bbox_x2=o[5], bbox_y2=o[6],
-                    confidence=o[7], reading_order=o[8], heading_level=o[9],
-                    source=o[10], status=o[11],
-                    description=o[12], description_model=o[13],
-                    description_status=o[14] or "pending",
-                    description_edited_by_user=o[15] or 0,
-                    asset_path=o[16],
+                    confidence=o[7],
+                    review_reliability=o[8],
+                    review_reliability_json=json.loads(o[9] or "{}"),
+                    reading_order=o[10], heading_level=o[11],
+                    source=o[12], status=o[13],
+                    description=o[14], description_model=o[15],
+                    description_status=o[16] or "pending",
+                    description_edited_by_user=o[17] or 0,
+                    asset_path=o[18],
                 )
                 for o in obj_rows
             ]
@@ -319,7 +323,8 @@ async def get_objects(doc_id: str):
             page_id, page_number = pr[0], pr[1]
             obj_rows = await db.execute_fetchall(
                 """SELECT id, page_id, label, bbox_x1, bbox_y1, bbox_x2, bbox_y2,
-                          confidence, reading_order, heading_level, source, status,
+                          confidence, review_reliability, review_reliability_json,
+                          reading_order, heading_level, source, status,
                           description, description_model, description_status,
                           description_edited_by_user, asset_path
                    FROM objects WHERE page_id=? ORDER BY reading_order""",
@@ -329,12 +334,15 @@ async def get_objects(doc_id: str):
                 ObjectResponse(
                     id=o[0], page_id=o[1], label=o[2],
                     bbox_x1=o[3], bbox_y1=o[4], bbox_x2=o[5], bbox_y2=o[6],
-                    confidence=o[7], reading_order=o[8], heading_level=o[9],
-                    source=o[10], status=o[11],
-                    description=o[12], description_model=o[13],
-                    description_status=o[14] or "pending",
-                    description_edited_by_user=o[15] or 0,
-                    asset_path=o[16],
+                    confidence=o[7],
+                    review_reliability=o[8],
+                    review_reliability_json=json.loads(o[9] or "{}"),
+                    reading_order=o[10], heading_level=o[11],
+                    source=o[12], status=o[13],
+                    description=o[14], description_model=o[15],
+                    description_status=o[16] or "pending",
+                    description_edited_by_user=o[17] or 0,
+                    asset_path=o[18],
                 )
                 for o in obj_rows
             ]
@@ -564,6 +572,12 @@ async def patch_object_description(object_id: str, body: DescribeObjectRequest):
             (new_text, object_id),
         )
         await db.commit()
+
+        try:
+            from app.services.reliability import compute_document_reliability
+            await compute_document_reliability(db, document_id, object_ids=[object_id])
+        except Exception as e:
+            logger.warning("Reliability recompute failed after description edit for %s: %s", object_id, e)
 
         await manager.broadcast(document_id, "object.description_edited", {
             "object_id": object_id,
@@ -820,11 +834,11 @@ async def get_bundle(doc_id: str):
 
 
 @router.get("/documents/{doc_id}/queue", response_model=QueueViewResponse)
-async def get_queue(doc_id: str, sort_by: str = "confidence", status_filter: str = "all"):
+async def get_queue(doc_id: str, sort_by: str = "reliability", status_filter: str = "all"):
     """Queue View: returns objects sorted for rapid triage.
 
-    sort_by: confidence (default, ascending — low confidence first), page, reading_order
-    status_filter: all, unreviewed, confirmed, low_confidence
+    sort_by: reliability (default, ascending — least reliable first), confidence, page, reading_order
+    status_filter: all, unreviewed, confirmed, low_confidence, low_reliability
     """
     db = await get_db()
     try:
@@ -836,7 +850,8 @@ async def get_queue(doc_id: str, sort_by: str = "confidence", status_filter: str
 
         # Get all objects with extraction status
         obj_rows = await db.execute_fetchall(
-            """SELECT o.id, p.page_number, o.label, o.confidence, o.status,
+            """SELECT o.id, p.page_number, o.label, o.confidence,
+                      o.review_reliability, o.review_reliability_json, o.status,
                       o.bbox_x1, o.bbox_y1, o.bbox_x2, o.bbox_y2,
                       o.reading_order,
                       CASE
@@ -858,12 +873,14 @@ async def get_queue(doc_id: str, sort_by: str = "confidence", status_filter: str
                 page_number=r[1],
                 label=r[2],
                 confidence=r[3],
-                status=r[4],
-                bbox_x1=r[5],
-                bbox_y1=r[6],
-                bbox_x2=r[7],
-                bbox_y2=r[8],
-                extraction_status=r[10],
+                review_reliability=r[4],
+                review_reliability_json=json.loads(r[5] or "{}"),
+                status=r[6],
+                bbox_x1=r[7],
+                bbox_y1=r[8],
+                bbox_x2=r[9],
+                bbox_y2=r[10],
+                extraction_status=r[12],
             )
             objects.append(obj)
 
@@ -874,9 +891,16 @@ async def get_queue(doc_id: str, sort_by: str = "confidence", status_filter: str
             objects = [o for o in objects if o.status == "confirmed"]
         elif status_filter == "low_confidence":
             objects = [o for o in objects if o.confidence is not None and o.confidence < 0.5]
+        elif status_filter == "low_reliability":
+            objects = [
+                o for o in objects
+                if (o.review_reliability if o.review_reliability is not None else o.confidence or 0) < 0.70
+            ]
 
         # Sort
-        if sort_by == "confidence":
+        if sort_by == "reliability":
+            objects.sort(key=lambda o: (o.review_reliability if o.review_reliability is not None else o.confidence or 0))
+        elif sort_by == "confidence":
             objects.sort(key=lambda o: (o.confidence if o.confidence is not None else 999))
         elif sort_by == "page":
             objects.sort(key=lambda o: o.page_number)

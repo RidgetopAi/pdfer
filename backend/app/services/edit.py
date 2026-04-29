@@ -20,7 +20,8 @@ VALID_LABELS = {
 async def _get_object(db: aiosqlite.Connection, object_id: str) -> dict | None:
     row = await db.execute_fetchall(
         """SELECT id, page_id, label, bbox_x1, bbox_y1, bbox_x2, bbox_y2,
-                  confidence, reading_order, reading_order_manual, heading_level,
+                  confidence, review_reliability, review_reliability_json,
+                  reading_order, reading_order_manual, heading_level,
                   source, status, parent_id, continues_from, continues_to,
                   extraction_stale, created_at
            FROM objects WHERE id=?""",
@@ -32,10 +33,12 @@ async def _get_object(db: aiosqlite.Connection, object_id: str) -> dict | None:
     return {
         "id": r[0], "page_id": r[1], "label": r[2],
         "bbox_x1": r[3], "bbox_y1": r[4], "bbox_x2": r[5], "bbox_y2": r[6],
-        "confidence": r[7], "reading_order": r[8], "reading_order_manual": r[9],
-        "heading_level": r[10], "source": r[11], "status": r[12],
-        "parent_id": r[13], "continues_from": r[14], "continues_to": r[15],
-        "extraction_stale": r[16], "created_at": r[17],
+        "confidence": r[7], "review_reliability": r[8],
+        "review_reliability_json": r[9], "reading_order": r[10],
+        "reading_order_manual": r[11], "heading_level": r[12],
+        "source": r[13], "status": r[14],
+        "parent_id": r[15], "continues_from": r[16], "continues_to": r[17],
+        "extraction_stale": r[18], "created_at": r[19],
     }
 
 
@@ -49,13 +52,16 @@ async def _restore_object_from_snapshot(db: aiosqlite.Connection, snapshot_json:
     await db.execute(
         """INSERT OR REPLACE INTO objects
            (id, page_id, label, bbox_x1, bbox_y1, bbox_x2, bbox_y2,
-            confidence, reading_order, reading_order_manual, heading_level,
+            confidence, review_reliability, review_reliability_json,
+            reading_order, reading_order_manual, heading_level,
             source, status, parent_id, continues_from, continues_to,
             extraction_stale, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (obj["id"], obj["page_id"], obj["label"],
          obj["bbox_x1"], obj["bbox_y1"], obj["bbox_x2"], obj["bbox_y2"],
-         obj["confidence"], obj["reading_order"], obj["reading_order_manual"],
+         obj["confidence"], obj.get("review_reliability"),
+         obj.get("review_reliability_json", "{}"),
+         obj["reading_order"], obj["reading_order_manual"],
          obj["heading_level"], obj["source"], obj["status"],
          obj["parent_id"], obj["continues_from"], obj["continues_to"],
          obj["extraction_stale"], obj["created_at"]),
@@ -352,7 +358,8 @@ async def apply_edits(
                 """SELECT o.id, o.page_id FROM objects o
                    JOIN pages p ON o.page_id = p.id
                    WHERE p.document_id=? AND o.status='unreviewed'
-                     AND o.confidence IS NOT NULL AND o.confidence >= ?""",
+                     AND COALESCE(o.review_reliability, o.confidence) IS NOT NULL
+                     AND COALESCE(o.review_reliability, o.confidence) >= ?""",
                 (document_id, threshold),
             )
             count = 0
@@ -392,6 +399,14 @@ async def apply_edits(
     )
 
     await db.commit()
+
+    try:
+        from app.services.reliability import compute_document_reliability
+        await compute_document_reliability(db, document_id, object_ids=affected_objects)
+    except Exception:
+        # Reliability is advisory for review automation; never block a user's edit
+        # or undo stack entry because a scorer failed.
+        pass
 
     # Fetch updated objects to return
     result_objects = []

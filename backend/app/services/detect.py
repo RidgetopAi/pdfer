@@ -13,6 +13,7 @@ from sklearn.cluster import DBSCAN
 
 from app.config import YOLO_CONF_THRESHOLD, YOLO_IOU_THRESHOLD
 from app.services.model_manager import model_manager
+from app.services.reliability import compute_document_reliability
 
 logger = logging.getLogger(__name__)
 
@@ -632,6 +633,14 @@ async def detect_document(db, doc_id: str, broadcast_fn=None) -> int:
         (doc_id,),
     )
     await db.commit()
+
+    try:
+        updated = await compute_document_reliability(db, doc_id)
+        logger.info("Computed review reliability for %d objects", updated)
+    except Exception as e:
+        # Reliability improves review automation, but detection itself should not
+        # be marked failed if pdfplumber cannot score one document.
+        logger.warning("Review reliability scoring failed for document %s: %s", doc_id, e)
 
     if broadcast_fn:
         await broadcast_fn(doc_id, "stage.completed", {

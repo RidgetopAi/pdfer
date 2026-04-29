@@ -48,6 +48,12 @@
   background: linear-gradient(90deg, var(--accent), rgba(207, 230, 255, 0.3));
   box-shadow: 0 0 8px rgba(207, 230, 255, 0.4);
 }
+.subtle {
+  margin-top: 4px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
 
 .actions {
   display: flex;

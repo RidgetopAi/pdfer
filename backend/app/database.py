@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS objects (
   description_edited_by_user INTEGER DEFAULT 0,
   description_status TEXT DEFAULT 'pending'
     CHECK (description_status IN ('pending','described','failed','skipped')),
+  review_reliability REAL,
+  review_reliability_json TEXT DEFAULT '{}',
   asset_path TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -158,6 +160,8 @@ OBJECT_COLUMN_MIGRATIONS = [
     ("description_metadata_json", "TEXT DEFAULT '{}'"),
     ("description_edited_by_user", "INTEGER DEFAULT 0"),
     ("description_status", "TEXT DEFAULT 'pending'"),
+    ("review_reliability", "REAL"),
+    ("review_reliability_json", "TEXT DEFAULT '{}'"),
     ("asset_path", "TEXT"),
 ]
 

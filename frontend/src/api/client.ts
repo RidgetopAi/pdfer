@@ -64,6 +64,8 @@ export interface DetectedObject {
   bbox_x2: number;
   bbox_y2: number;
   confidence: number | null;
+  review_reliability?: number | null;
+  review_reliability_json?: Record<string, unknown> | null;
   reading_order: number | null;
   heading_level: number | null;
   source: string;
@@ -307,6 +309,8 @@ export interface QueueObject {
   page_number: number;
   label: string;
   confidence: number | null;
+  review_reliability?: number | null;
+  review_reliability_json?: Record<string, unknown> | null;
   status: string;
   bbox_x1: number;
   bbox_y1: number;
@@ -339,7 +343,7 @@ export function bundleUrl(docId: string): string {
 
 export async function fetchQueue(
   docId: string,
-  sortBy: string = "confidence",
+  sortBy: string = "reliability",
   statusFilter: string = "all",
 ): Promise<QueueViewResponse> {
   const res = await fetch(

@@ -50,6 +50,8 @@ class ObjectResponse(BaseModel):
     bbox_x2: float
     bbox_y2: float
     confidence: float | None
+    review_reliability: float | None = None
+    review_reliability_json: dict | None = None
     reading_order: int | None
     heading_level: int | None
     source: str
@@ -185,6 +187,8 @@ class QueueObject(BaseModel):
     page_number: int
     label: str
     confidence: float | None
+    review_reliability: float | None = None
+    review_reliability_json: dict | None = None
     status: str
     bbox_x1: float
     bbox_y1: float

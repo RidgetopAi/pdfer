@@ -31,8 +31,8 @@ export function AutoConfirmPanel({
       objects.filter(
         (o) =>
           o.status === "unreviewed" &&
-          o.confidence != null &&
-          o.confidence >= threshold,
+          (o.review_reliability ?? o.confidence) != null &&
+          (o.review_reliability ?? o.confidence ?? 0) >= threshold,
       ).length,
     [objects, threshold],
   );
@@ -50,7 +50,7 @@ export function AutoConfirmPanel({
       }
     >
       <div className={styles.hint}>
-        Confirm every unreviewed region at or above the threshold. One batch, one undo.
+        Confirm every unreviewed region at or above the reliability threshold. One batch, one undo.
       </div>
       <div className={styles.sliderRow}>
         <input
@@ -61,7 +61,7 @@ export function AutoConfirmPanel({
           step={0.01}
           value={threshold}
           onChange={(e) => setThreshold(parseFloat(e.target.value))}
-          aria-label="Confidence threshold"
+          aria-label="Reliability threshold"
           disabled={disabled}
         />
         <div className={styles.pct}>{pct}%</div>
@@ -75,12 +75,12 @@ export function AutoConfirmPanel({
           title={
             eligibleCount === 0
               ? "No unreviewed regions at or above this threshold"
-              : `Confirm ${eligibleCount} region${eligibleCount === 1 ? "" : "s"}`
+              : `Confirm ${eligibleCount} reliable region${eligibleCount === 1 ? "" : "s"}`
           }
         >
           {isPending
             ? "Confirming…"
-            : `Confirm ${eligibleCount} above ${pct}%`}
+            : `Confirm ${eligibleCount} reliable above ${pct}%`}
         </Button>
       </div>
     </Panel>

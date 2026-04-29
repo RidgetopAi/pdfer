@@ -16,7 +16,7 @@ interface QueueViewProps {
 }
 
 type StatusFilter = "all" | "unreviewed" | "reviewed";
-type SortBy = "page" | "confidence";
+type SortBy = "page" | "reliability" | "confidence";
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All Statuses" },
@@ -26,7 +26,8 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
   { value: "page", label: "Page · reading order" },
-  { value: "confidence", label: "Confidence — low first" },
+  { value: "reliability", label: "Reliability — low first" },
+  { value: "confidence", label: "YOLO confidence — low first" },
 ];
 
 /**
@@ -37,13 +38,13 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
  * preserved.
  *
  * Backend supports filters (all|unreviewed|confirmed|low_confidence) and
- * sorts (page|confidence). The "Reviewed Only" UI option does not have a
+ * sorts (page|reliability|confidence). The "Reviewed Only" UI option does not have a
  * direct server equivalent (server has "confirmed" but not "any reviewed"),
  * so we fetch "all" and filter client-side when that option is active.
  */
 export function QueueView({ docId, pageIdByNumber, onJumpToObject }: QueueViewProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("unreviewed");
-  const [sortBy, setSortBy] = useState<SortBy>("page");
+  const [sortBy, setSortBy] = useState<SortBy>("reliability");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Server filter: "reviewed" client-filters, the others map directly.
@@ -167,6 +168,8 @@ function QueueRow({ obj, active, onSelect, onJump, onApprove, onReject, busy }: 
   const tint = colorForLabel(obj.label);
   const conf = obj.confidence;
   const confPct = conf == null ? null : Math.round(conf * 100);
+  const reliability = obj.review_reliability ?? obj.confidence ?? null;
+  const reliabilityPct = reliability == null ? null : Math.round(reliability * 100);
   const statusTone =
     obj.status === "confirmed" ? "done"
     : obj.status === "rejected" ? "error"
@@ -184,8 +187,12 @@ function QueueRow({ obj, active, onSelect, onJump, onApprove, onReject, busy }: 
         <span className={styles.labelDot} />
         {obj.label.replace(/_/g, " ")}
       </span>
-      <span className={styles.confidence} data-low={conf != null && conf < 0.5 ? "true" : "false"}>
-        {confPct != null ? `${confPct}%` : "—"}
+      <span
+        className={styles.confidence}
+        data-low={reliability != null && reliability < 0.7 ? "true" : "false"}
+        title={confPct != null ? `YOLO confidence ${confPct}%` : "YOLO confidence unavailable"}
+      >
+        {reliabilityPct != null ? `${reliabilityPct}%` : "—"}
       </span>
       <span className={styles.statusCell}>
         <StatusPill tone={statusTone} dot>{statusLabel}</StatusPill>
